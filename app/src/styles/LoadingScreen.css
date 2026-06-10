@@ -1,0 +1,27 @@
+.loading-screen {
+  padding: 1rem;
+  border-radius: 14px;
+  background: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.loading-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #2563eb;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}

@@ -1,0 +1,18 @@
+# .NET artifacts
+bin/
+obj/
+
+# Node
+node_modules/
+app/node_modules/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build output
+dist/
+build/

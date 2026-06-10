@@ -1,0 +1,19 @@
+.carousel-panel ul,
+.chat-panel ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.carousel-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.95rem;
+  background: #f8fafc;
+}
+
+.carousel-card h4 {
+  margin: 0 0 0.35rem;
+}

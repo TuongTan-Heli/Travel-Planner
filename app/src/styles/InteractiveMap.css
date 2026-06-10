@@ -1,0 +1,16 @@
+.map-panel {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.map-frame {
+  height: 240px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #dbeafe, #e2e8f0);
+  display: grid;
+  place-items: center;
+  color: #0f172a;
+  text-align: center;
+}
