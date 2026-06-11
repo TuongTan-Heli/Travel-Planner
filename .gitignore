@@ -16,3 +16,4 @@ app/node_modules/
 # Build output
 dist/
 build/
+TravelPlanner/.env

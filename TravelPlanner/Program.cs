@@ -1,4 +1,12 @@
+using System.IO;
+using DotNetEnv;
+using TravelPlanner.Features.Chat.Services;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Load .env from the application root so Environment.GetEnvironmentVariable works
+var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+if (File.Exists(envPath)) Env.Load(envPath);
 
 builder.WebHost.UseUrls("http://localhost:5223");
 
@@ -13,6 +21,9 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+// Chat service (typed HttpClient) and websocket service
+builder.Services.AddHttpClient<ChatService>();
+builder.Services.AddSingleton<ChatWebSocketService>();
 
 var app = builder.Build();
 
@@ -22,6 +33,21 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowLocalhost");
+app.UseWebSockets();
+
+app.Map("/ws/chat", async context =>
+{
+    if (!context.WebSockets.IsWebSocketRequest)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        return;
+    }
+
+    var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+    var chatService = context.RequestServices.GetRequiredService<ChatWebSocketService>();
+    await chatService.HandleAsync(webSocket);
+});
+
 app.UseAuthorization();
 app.MapControllers();
 
