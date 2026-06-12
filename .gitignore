@@ -17,3 +17,4 @@ app/node_modules/
 dist/
 build/
 TravelPlanner/.env
+app/.env

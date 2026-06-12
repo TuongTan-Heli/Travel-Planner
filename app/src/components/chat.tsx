@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import '../styles/chat.css';
+import TypeWriter from './TypeWriter';
 
 // Simple UUID generator
 const Guid = {
@@ -17,6 +18,7 @@ interface ChatMessage {
   type: 'incoming' | 'outgoing';
   sender?: string;
   timestamp?: string;
+  thinking?: boolean;
 }
 
 interface OutgoingMessage {
@@ -118,11 +120,23 @@ export default function Chat() {
         <div className="chat-messages">
           {messages.map((message) => {
             if (message.type === 'incoming') {
-              return (
-                <div key={message.id} className="chat-message incoming">
-                  {message.text}
-                </div>
-              );
+              if (message.thinking) {
+                return (
+                  <div key={message.id} className="chat-message incoming">
+                    {message.text}
+                  </div>
+                );
+              }
+              else {
+
+                return (
+                  <div key={message.id} className="chat-message incoming">
+                    <TypeWriter
+                      text={message.text}
+                      speed={4}
+                    />
+                  </div>);
+              }
             }
 
             if (message.type === 'outgoing') {

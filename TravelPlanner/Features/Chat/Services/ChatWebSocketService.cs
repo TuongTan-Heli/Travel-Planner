@@ -118,65 +118,62 @@ public sealed class ChatWebSocketService
             Text = input.Text,
             Type = ChatMessageType.Outgoing,
             Sender = "User",
-            Timestamp = DateTime.UtcNow.ToString("o")
+            Timestamp = DateTime.UtcNow.ToString("o"),
+            Thinking = false
         };
 
         AddToHistory(broadcastMessage);
         await BroadcastMessageAsync(broadcastMessage);
-
-        // Fire-and-forget: update a single thinking message until the result is ready
-        _ = Task.Run(async () =>
+        try
         {
-            try
-            {
-                var thinkingId = Guid.NewGuid().ToString();
-                var dots = new[] { "", ".", "..", "...", "", ".", ".." };
-                var thinking = new ChatMessage
-                {
-                    Id = thinkingId,
-                    Text = "thinking",
-                    Type = ChatMessageType.Incoming,
-                    Sender = "Bot",
-                    Timestamp = DateTime.UtcNow.ToString("o")
-                };
+            var replyTask = _chatService.GenerateReplyAsync(input.Text);
+            var thinkingId = Guid.NewGuid().ToString();
 
-                AddOrUpdateHistory(thinking);
-                await BroadcastMessageAsync(thinking);
-
-                foreach (var d in dots)
-                {
-                    thinking = new ChatMessage
+            // Fire-and-forget: update a single thinking message until the result is ready
+            var animationTask = Task.Run(async () =>
                     {
-                        Id = thinkingId,
-                        Text = "thinking" + d,
-                        Type = ChatMessageType.Incoming,
-                        Sender = "Bot",
-                        Timestamp = DateTime.UtcNow.ToString("o")
-                    };
+                        var dots = new[] { "", ".", "..", "...", "..", "." };
 
-                    AddOrUpdateHistory(thinking);
-                    await BroadcastMessageAsync(thinking);
-                    await Task.Delay(600);
-                }
+                        var index = 0;
+                        while (!replyTask.IsCompleted)
+                        {
+                            var thinking = new ChatMessage
+                            {
+                                Id = thinkingId,
+                                Text = "thinking" + dots[index],
+                                Type = ChatMessageType.Incoming,
+                                Sender = "Bot",
+                                Timestamp = DateTime.UtcNow.ToString("o"),
+                                Thinking = true
+                            };
+                            AddOrUpdateHistory(thinking);
+                            await BroadcastMessageAsync(thinking);
 
-                var replyText = await _chatService.GenerateReplyAsync(input.Text);
-                var reply = new ChatMessage
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Text = replyText,
-                    Type = ChatMessageType.Incoming,
-                    Sender = "Bot",
-                    Timestamp = DateTime.UtcNow.ToString("o")
-                };
+                            index = (index + 1) % dots.Length;
 
-                AddToHistory(reply);
-                await BroadcastMessageAsync(reply);
-            }
-            catch (Exception ex)
+                            await Task.Delay(600);
+                        }
+                    });
+            var replyText = await replyTask;
+            await animationTask;
+
+            var reply = new ChatMessage
             {
-                Console.WriteLine($"Error generating reply: {ex.Message}");
-            }
-        });
+                Id = thinkingId,
+                Text = replyText,
+                Type = ChatMessageType.Incoming,
+                Sender = "Bot",
+                Timestamp = DateTime.UtcNow.ToString("o"),
+                Thinking = false
+            };
+
+            AddToHistory(reply);
+            await BroadcastMessageAsync(reply);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating reply: {ex.Message}");
+        }
     }
 
     private void AddToHistory(ChatMessage message)
