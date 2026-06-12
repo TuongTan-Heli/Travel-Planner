@@ -34,6 +34,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowLocalhost");
 app.UseWebSockets();
+app.UseMiddleware<ErrorMiddleware>();
 
 app.Map("/ws/chat", async context =>
 {

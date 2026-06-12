@@ -56,12 +56,11 @@ public class ChatService
 
         try
         {
-
             using var resp = await _http.SendAsync(req);
             var respText = await resp.Content.ReadAsStringAsync();
             if (!resp.IsSuccessStatusCode)
             {
-                Console.WriteLine($"API error: {resp.StatusCode} - {respText}");
+                throw new AppException("API_ERROR", $"API returned {resp.StatusCode}: {respText}");
             }
 
             try
@@ -98,12 +97,12 @@ public class ChatService
             }
             catch
             {
-                return respText;
+                throw new AppException("API_RESP", respText);
             }
         }
-        catch (Exception ex)
+        catch (AppException ex)
         {
-            return $"(request failed: {ex.Message})";
+            throw new AppException("API_ERROR", ex.Message, ex);
         }
     }
 }

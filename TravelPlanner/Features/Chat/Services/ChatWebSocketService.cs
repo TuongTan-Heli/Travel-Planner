@@ -70,7 +70,7 @@ public sealed class ChatWebSocketService
             {
                 if (count >= buffer.Length)
                 {
-                    throw new InvalidOperationException("WebSocket message too large.");
+                    throw new AppException("WS_MSG_TOO_LARGE", "WebSocket message too large.");
                 }
 
                 result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer, count, buffer.Length - count), CancellationToken.None);
@@ -102,8 +102,7 @@ public sealed class ChatWebSocketService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to deserialize message: {ex.Message}");
-            return;
+            throw new AppException("WS_DESERIALIZE", $"Failed to deserialize message: {ex.Message}");
         }
 
         if (input?.Text is null or { Length: 0 })
@@ -172,7 +171,7 @@ public sealed class ChatWebSocketService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error generating reply: {ex.Message}");
+            throw new AppException("WS_ERROR", $"Error generating reply: {ex.Message}");
         }
     }
 
