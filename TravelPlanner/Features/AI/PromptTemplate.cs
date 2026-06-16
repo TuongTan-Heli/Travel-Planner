@@ -2,7 +2,8 @@ public class PromptTemplate
 {
     public static string BuildIntentExtractionPrompt(
     string userMessage,
-    string conversationContext = "")
+    string conversationContext = ""
+    )
     {
         return $$"""
             You are a travel planning information extraction engine.
@@ -46,14 +47,13 @@ public class PromptTemplate
             - If user asks a non-travel topic:
                 isTravelRelated = false
                 isReadyForPlanning = false
-                assistantMessage = "I can help with travel planning. Where would you like to travel?"
+                assistantMessage = "I don't know much about {topic}. I can only help with travel planning. Where would you like to travel?"
 
             Required planning fields:
 
             - destination
             - travel dates OR trip duration
             - budget
-            - interests
 
             Current Conversation Context:
 

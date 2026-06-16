@@ -46,6 +46,9 @@ export default function Chat() {
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as ChatMessage;
+        if (message.id === "error") {
+          setError(message.text);
+        }
         setMessages((prev) => {
           const index = prev.findIndex((m) => m.id === message.id);
           if (index !== -1) {

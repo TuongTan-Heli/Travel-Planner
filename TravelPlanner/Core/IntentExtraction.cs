@@ -1,67 +1,99 @@
 using System.Text.Json;
-using TravelPlanner.Features.Chat.Services;
+using static TravelPlanner.Utils;
 
-public class IntentExtraction
+namespace TravelPlanner.Features.Chat.Services;
+
+public sealed class IntentExtractionService
 {
-
     private readonly ChatService _chatService;
-    public IntentExtraction(ChatService chatService)
+
+    public IntentExtractionService(ChatService chatService)
     {
         _chatService = chatService;
     }
-    // private async Task<TravelWorkflowResult> HandleIntentExtraction(
-    // TravelSession session,
-    // string userMessage)
-    // {
-    //     var prompt =
-    //         PromptBuilder.Build(
-    //             TravelStage.IntentExtraction,
-    //             session.Context,
-    //             userMessage);
 
-    //     var aiJson =
-    //         await _chatService.GenerateReplyAsync(prompt);
+    public async Task<IntentExtractionResponse> ExtractAsync(
+        TravelSession session,
+        string userMessage)
+    {
+        var prompt = PromptBuilder.Build(
+            TravelStage.IntentExtraction,
+            session.Context,
+            userMessage);
 
-    //     var result =
-    //         JsonSerializer.Deserialize<TravelIntentResult>(
-    //             aiJson);
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
-    //     if (result == null)
-    //     {
-    //         throw new AppException(
-    //             "INTENT_PARSE",
-    //             "Failed to parse AI response");
-    //     }
+        var replyText = await _chatService.GenerateReplyAsync(prompt);
 
-    //     MergeContext(
-    //         session.Context,
-    //         result);
+        var result = JsonSerializer.Deserialize<TravelIntentResult>(
+            replyText,
+            options);
 
-    //     if (!result.IsTravelRelated)
-    //     {
-    //         return new TravelWorkflowResult
-    //         {
-    //             Message = result.AssistantMessage
-    //         };
-    //     }
+        if (result is null)
+        {
+            throw new AppException(
+                "INTENT_PARSE_ERROR",
+                "Failed to parse intent extraction result.");
+        }
 
-    //     if (!session.Context.IsReadyForPlanning())
-    //     {
-    //         return new TravelWorkflowResult
-    //         {
-    //             Message = result.AssistantMessage
-    //         };
-    //     }
+        MergeContext(session.Context, result);
 
-    //     session.Stage =
-    //         TravelStage.LocationSelection;
+        var ready = session.Context.IsReadyForPlanning();
 
-    //     return new TravelWorkflowResult
-    //     {
-    //         IsReadyForPlanning = true,
-    //         NextAction = TravelStage.LocationSelection,
-    //         Message =
-    //             "Great! I have enough information to start building your trip."
-    //     };
-    // }
+        if (ready)
+        {
+            session.Stage = TravelStage.LocationSelection;
+        }
+
+        return new IntentExtractionResponse
+        {
+            Message = ready
+                ? "Great! I have enough information to start planning your trip."
+                : result.AssistantMessage,
+
+            IsReadyForPlanning = ready,
+
+            IntentResult = result
+        };
+    }
+
+    private static void MergeContext(
+        TravelPromptContext ctx,
+        TravelIntentResult result)
+    {
+        if (!string.IsNullOrWhiteSpace(result.Destination))
+            ctx.Destination = result.Destination;
+
+        if (result.Days.HasValue)
+            ctx.Days = result.Days;
+
+        if (result.Budget.HasValue)
+            ctx.Budget = result.Budget;
+
+        if (result.Travelers.HasValue)
+            ctx.Travelers = result.Travelers;
+
+        if (result.StartDate != null)
+            ctx.StartDate = ParseDate(result.StartDate);
+
+        if (result.EndDate != null)
+            ctx.EndDate = ParseDate(result.EndDate);
+
+        if (result.Interests?.Count > 0)
+        {
+            ctx.Interests = ctx.Interests
+                .Union(result.Interests)
+                .ToList();
+        }
+
+        if (result.Preferences?.Count > 0)
+        {
+            ctx.Preferences = ctx.Preferences
+                .Union(result.Preferences)
+                .ToList();
+        }
+    }
 }

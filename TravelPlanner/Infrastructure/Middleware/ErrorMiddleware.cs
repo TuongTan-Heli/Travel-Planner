@@ -23,9 +23,7 @@ public class ErrorMiddleware
         }
         catch (AppException ex)
         {
-            await HandleExceptionAsync(
-                context,
-                ex);
+            await HandleExceptionAsync(context, ex);
         }
     }
 

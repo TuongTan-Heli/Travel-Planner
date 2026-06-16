@@ -17,10 +17,17 @@ public sealed class ChatWebSocketService
     // private readonly List<ChatMessage> _recentMessages = new();
     // private readonly object _historyLock = new();
     private readonly ChatService _chatService;
+
+    private readonly WebSocketNotifier _webSocketNotifier;
+    private readonly IntentExtractionService _intentExtractionService;
+    private readonly TravelPlanningService _travelPlanningService;
     private readonly ConcurrentDictionary<WebSocket, TravelSession> _sessions = new();
-    public ChatWebSocketService(ChatService chatService)
+    public ChatWebSocketService(ChatService chatService, IntentExtractionService intentExtractionService, TravelPlanningService travelPlanningService, WebSocketNotifier webSocketNotifier)
     {
         _chatService = chatService;
+        _intentExtractionService = intentExtractionService;
+        _travelPlanningService = travelPlanningService;
+        _webSocketNotifier = webSocketNotifier;
     }
     private TravelSession GetSession(WebSocket socket)
     {
@@ -162,7 +169,6 @@ public sealed class ChatWebSocketService
                         session.Context,
                         input.Text);
 
-
         var broadcastMessage = new ChatMessage
         {
             Id = string.IsNullOrWhiteSpace(input.Id) ? Guid.NewGuid().ToString() : input.Id,
@@ -174,100 +180,73 @@ public sealed class ChatWebSocketService
         };
 
         // AddToHistory(broadcastMessage);
-
+        #region Gather necessary travel information for intent extraction
         await BroadcastMessageAsync(socket, broadcastMessage);
 
         try
         {
-            var replyTask = _chatService.GenerateReplyAsync(prompt);
-            var thinkingId = Guid.NewGuid().ToString();
-
-            #region Thinking animation
-            var animationTask = Task.Run(async () =>
-                    {
-                        var dots = new[] { "", ".", "..", "...", "..", "." };
-
-                        var index = 0;
-                        while (!replyTask.IsCompleted)
-                        {
-                            var thinking = new ChatMessage
-                            {
-                                Id = thinkingId,
-                                Text = "thinking" + dots[index],
-                                Type = ChatMessageType.Incoming,
-                                Sender = "Bot",
-                                Timestamp = DateTime.UtcNow.ToString("o"),
-                                Thinking = true
-                            };
-                            // AddOrUpdateHistory(thinking);
-                            await BroadcastMessageAsync(socket, thinking);
-
-                            index = (index + 1) % dots.Length;
-
-                            await Task.Delay(600);
-                        }
-                    });
-
-            #endregion
-
-
-            var replyText = await replyTask;
-
-            await animationTask;
-
-            var result = JsonSerializer.Deserialize<TravelIntentResult>(replyText, options);
-
-            if (result is null)
+            if (session.Stage == TravelStage.IntentExtraction)
             {
-                throw new AppException("WS_INVALID_RESPONSE", "Failed to parse intent extraction result.");
+                var thinkingId = Guid.NewGuid().ToString();
+
+                var extractionTask = _intentExtractionService.ExtractAsync(session, input.Text);
+
+                var animationTask = RunThinkingAnimationAsync(socket, thinkingId, extractionTask);
+
+                var extractionResult = await extractionTask;
+
+                await animationTask;
+
+                var reply = new ChatMessage
+                {
+                    Id = thinkingId,
+                    Text = extractionResult.Message,
+                    Type = ChatMessageType.Incoming,
+                    Sender = "Bot",
+                    Timestamp = DateTime.UtcNow.ToString("o"),
+                    Thinking = false
+                };
+
+                // AddToHistory(reply);
+                await BroadcastMessageAsync(socket, reply);
+        #endregion
             }
 
-            MergeContext(session.Context, result);
-            string rep;
-            if (!session.Context.IsReadyForPlanning())
+
+            if (session.Stage == TravelStage.LocationSelection)
             {
-                rep = result.AssistantMessage;
+                var TravelPlanningTask = await _travelPlanningService.BuildPlanningDataAsync(session);
+                // await TravelPlanningTask;
             }
-            else
-            {
-                rep = "Great! I have enough information to start planning your trip.";
-                session.Stage = TravelStage.LocationSelection;
-            }
-            #region boardcast reply to user
-            var reply = new ChatMessage
+            
+        }
+        catch (AppException ex)
+        {
+            await _webSocketNotifier.SendErrorAsync(socket, ex.Code, ex.Message);
+        }
+    }
+    private async Task RunThinkingAnimationAsync(WebSocket socket, string thinkingId, Task stopSignal)
+    {
+        var dots = new[] { "", ".", "..", "...", "..", "." };
+        var index = 0;
+
+        while (!stopSignal.IsCompleted)
+        {
+            var thinkingMessage = new ChatMessage
             {
                 Id = thinkingId,
-                Text = rep,
+                Text = "thinking" + dots[index],
                 Type = ChatMessageType.Incoming,
                 Sender = "Bot",
                 Timestamp = DateTime.UtcNow.ToString("o"),
-                Thinking = false
+                Thinking = true
             };
 
-            // AddToHistory(reply);
-            await BroadcastMessageAsync(socket, reply);
-            #endregion
+            await BroadcastMessageAsync(socket, thinkingMessage);
+
+            index = (index + 1) % dots.Length;
+            await Task.Delay(600);
         }
-        catch (Exception ex)
-        {
-            throw new AppException("WS_ERROR", $"Error generating reply: {ex.Message}");
-        }
-    }
-    private static void MergeContext(
-        TravelPromptContext ctx,
-        TravelIntentResult result)
-    {
-        if (!string.IsNullOrWhiteSpace(result.Destination))
-            ctx.Destination = result.Destination;
-
-        if (result.Days.HasValue)
-            ctx.Days = result.Days;
-
-        if (result.Budget.HasValue)
-            ctx.Budget = result.Budget;
-
-        if (result.Travelers.HasValue)
-            ctx.Travelers = result.Travelers;
     }
     // private void AddToHistory(ChatMessage message)
     // {

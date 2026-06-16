@@ -23,7 +23,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 // Chat service (typed HttpClient) and websocket service
 builder.Services.AddHttpClient<ChatService>();
+builder.Services.AddHttpClient<WeatherService>();
+builder.Services.AddSingleton<MapService>();
 builder.Services.AddSingleton<ChatWebSocketService>();
+builder.Services.AddSingleton<IntentExtractionService>();
+builder.Services.AddSingleton<TravelPlanningService>();
+builder.Services.AddSingleton<WebSocketNotifier>();
 
 var app = builder.Build();
 

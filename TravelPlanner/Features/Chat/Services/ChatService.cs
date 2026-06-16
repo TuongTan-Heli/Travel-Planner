@@ -60,6 +60,7 @@ public class ChatService
             var respText = await resp.Content.ReadAsStringAsync();
             if (!resp.IsSuccessStatusCode)
             {
+                
                 throw new AppException("API_ERROR", $"API returned {resp.StatusCode}: {respText}");
             }
 
