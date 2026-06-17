@@ -108,14 +108,13 @@ public class WeatherService
             x.Date.Year,
             Week = GetWeekOfYear(x.Date)
         })
-        .Select(g => new WeeklyClimate
+        .Select(g => new
         {
-            Year = g.Key.Year,
-            Week = g.Key.Week,
-
             AvgMaxTemp = g.Average(x => x.MaxTemp),
             AvgMinTemp = g.Average(x => x.MinTemp),
             AvgRainfall = g.Average(x => x.Rainfall),
+            g.Key.Year,
+            g.Key.Week,
             AvgScore = g.Average(x => x.Score),
             RepresentativeDate = g.First().Date
         })
@@ -126,13 +125,12 @@ public class WeatherService
 
         var nextYear = DateTime.UtcNow.Year + 1;
 
-        var start =
-            FirstDateOfWeekInMonth(
-                nextYear,
-                best.Month,
-                best.Week);
+        var today = DateTime.UtcNow.Date;
 
-        var end = start.AddDays(days - 1);
+        var (start, end) = GetNextBestTravelWindow(
+        best.Week,
+        days,
+        DateTime.UtcNow);
 
         return new TravelTime
         {
