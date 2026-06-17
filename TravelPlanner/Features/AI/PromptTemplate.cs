@@ -26,7 +26,8 @@ public class PromptTemplate
             "startDate": null,
             "endDate": null,
             "days": null,
-            "budget": null,
+            "budget": null, *number only*
+            "currency": null,
             "travelers": null,
             "interests": [],
             "preferences": [],
@@ -48,7 +49,7 @@ public class PromptTemplate
                 isTravelRelated = false
                 isReadyForPlanning = false
                 assistantMessage = "I don't know much about {topic}. I can only help with travel planning. Where would you like to travel?"
-
+            - Default currency USD
             Required planning fields:
 
             - destination

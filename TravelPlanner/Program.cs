@@ -1,5 +1,6 @@
 using System.IO;
 using DotNetEnv;
+using TravelPlanner;
 using TravelPlanner.Features.Chat.Services;
 
 var builder = WebApplication.CreateBuilder(args);

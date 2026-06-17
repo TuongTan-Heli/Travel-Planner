@@ -1,3 +1,4 @@
+namespace TravelPlanner;
 public sealed class TravelPlanningService
 {
     private readonly WeatherService _weatherService;
@@ -16,7 +17,8 @@ public sealed class TravelPlanningService
             throw new AppException("INSUFFICIENT_DATA", "Destination and days are required for planning.");
         }
         Task<TravelTime> weatherTask;
-        if (session.Context.StartDate.HasValue && session.Context.EndDate.HasValue)
+        if (session.Context.StartDate.HasValue && session.Context.EndDate.HasValue
+        && session.Context.StartDate <= new DateTime().AddDays(15))
         {
             weatherTask = _weatherService.GetWeatherAsync(
                 session.Context.Destination,
@@ -25,7 +27,7 @@ public sealed class TravelPlanningService
         }
         else
         {
-            weatherTask = _weatherService.GetRecomendedTimeAsync(
+            weatherTask = _weatherService.GetRecommendedTimeAsync(
                 session.Context.Destination,
                 session.Context.Days);
         }

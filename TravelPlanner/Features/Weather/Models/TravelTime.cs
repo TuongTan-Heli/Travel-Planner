@@ -4,5 +4,5 @@ public class TravelTime
     public DateTime StartTime { get; init; } = DateTime.MinValue;
     public DateTime EndTime { get; init; } = DateTime.MinValue;
 
-    public List<WeatherForecast> WeatherForecasts { get; init; } = new();
+    public List<WeatherDay> WeatherForecasts { get; init; } = new();
 }

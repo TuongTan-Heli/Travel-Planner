@@ -1,6 +1,7 @@
 using System.Globalization;
 
 namespace TravelPlanner;
+
 public class Utils
 {
     public static DateTime? ParseDate(string? value)
@@ -16,5 +17,17 @@ public class Utils
             out var date)
             ? date
             : null;
+    }
+    public static DateTime FirstDateOfWeekInMonth(
+    int year,
+    int month,
+    int week)
+    {
+        var firstDay = new DateTime(year, month, 1);
+
+        var offset =
+            ((week - 1) * 7);
+
+        return firstDay.AddDays(offset);
     }
 }
