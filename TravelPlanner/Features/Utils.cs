@@ -4,7 +4,12 @@ namespace TravelPlanner;
 
 public class Utils
 {
-    public static DateTime? ParseDate(string? value)
+    private readonly HttpClient _httpClient;
+    public Utils(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+    public DateTime? ParseDate(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
@@ -18,7 +23,7 @@ public class Utils
             ? date
             : null;
     }
-    public static (DateTime Start, DateTime End) GetNextBestTravelWindow(
+    public (DateTime Start, DateTime End) GetNextBestTravelWindow(
         int bestWeek,
         int days,
         DateTime? fromDate = null)
@@ -54,14 +59,34 @@ public class Utils
         return (start, end);
     }
 
-    // assume you already have this somewhere
-    public static DateTime GetDateFromWeekOfYear(int year, int week)
+    public DateTime GetDateFromWeekOfYear(int year, int week)
     {
         var firstDay = new DateTime(year, 1, 1);
 
         var offset = (week - 1) * 7;
 
         return firstDay.AddDays(offset);
+    }
+
+    public async Task<(double lat, double lon)> GetCoordinatesAsync(
+    string location)
+    {
+        var url =
+            $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(location)}";
+
+        var response =
+            await _httpClient.GetFromJsonAsync<Location>(url);
+
+        var first = response?.Results?.FirstOrDefault();
+
+        if (first == null)
+        {
+            throw new AppException(
+                "LOCATION_NOT_FOUND",
+                $"Could not find coordinates for {location}");
+        }
+
+        return (first.Latitude, first.Longitude);
     }
 
 }

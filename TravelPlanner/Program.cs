@@ -1,7 +1,8 @@
-using System.IO;
 using DotNetEnv;
 using TravelPlanner;
 using TravelPlanner.Features.Chat.Services;
+using TravelPlanner.Features.Map;
+using TravelPlanner.Features.Weather.Services.WeatherService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,11 +26,12 @@ builder.Services.AddControllers();
 // Chat service (typed HttpClient) and websocket service
 builder.Services.AddHttpClient<ChatService>();
 builder.Services.AddHttpClient<WeatherService>();
-builder.Services.AddSingleton<MapService>();
+builder.Services.AddHttpClient<MapService>();
 builder.Services.AddSingleton<ChatWebSocketService>();
 builder.Services.AddSingleton<IntentExtractionService>();
 builder.Services.AddSingleton<TravelPlanningService>();
 builder.Services.AddSingleton<WebSocketNotifier>();
+builder.Services.AddHttpClient<Utils>();
 
 var app = builder.Build();
 

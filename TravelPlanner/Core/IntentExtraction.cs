@@ -1,15 +1,16 @@
 using System.Text.Json;
-using static TravelPlanner.Utils;
 
 namespace TravelPlanner.Features.Chat.Services;
 
 public sealed class IntentExtractionService
 {
     private readonly ChatService _chatService;
+    private readonly Utils _utils;
 
-    public IntentExtractionService(ChatService chatService)
+    public IntentExtractionService(ChatService chatService, Utils utils)
     {
         _chatService = chatService;
+        _utils = utils;
     }
 
     public async Task<IntentExtractionResponse> ExtractAsync(
@@ -60,7 +61,7 @@ public sealed class IntentExtractionService
         };
     }
 
-    private static void MergeContext(
+    private void MergeContext(
         TravelPromptContext ctx,
         TravelIntentResult result)
     {
@@ -77,10 +78,10 @@ public sealed class IntentExtractionService
             ctx.Travelers = result.Travelers;
 
         if (result.StartDate != null)
-            ctx.StartDate = ParseDate(result.StartDate);
+            ctx.StartDate = _utils.ParseDate(result.StartDate);
 
         if (result.EndDate != null)
-            ctx.EndDate = ParseDate(result.EndDate);
+            ctx.EndDate = _utils.ParseDate(result.EndDate);
 
         if (result.Interests?.Count > 0)
         {

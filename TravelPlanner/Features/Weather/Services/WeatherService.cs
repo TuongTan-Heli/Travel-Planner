@@ -1,14 +1,13 @@
-using static TravelPlanner.Utils;
-
-namespace TravelPlanner;
+namespace TravelPlanner.Features.Weather.Services.WeatherService;
 
 public class WeatherService
 {
     private readonly HttpClient _httpClient;
-
-    public WeatherService(HttpClient httpClient)
+    private readonly Utils _utils;
+    public WeatherService(HttpClient httpClient, Utils utils)
     {
         _httpClient = httpClient;
+        _utils = utils;
     }
     public async Task<TravelTime> GetRecommendedTimeAsync(
     string location,
@@ -18,7 +17,7 @@ public class WeatherService
         var startDate = endDate.AddYears(-3);
 
         var (lat, lon) =
-            await GetCoordinatesAsync(location);
+            await _utils.GetCoordinatesAsync(location);
 
         var url =
             $"https://archive-api.open-meteo.com/v1/archive" +
@@ -66,7 +65,7 @@ public class WeatherService
         }
 
         var (lat, lon) =
-            await GetCoordinatesAsync(location);
+            await _utils.GetCoordinatesAsync(location);
 
         var url =
             $"https://api.open-meteo.com/v1/forecast" +
@@ -96,7 +95,7 @@ public class WeatherService
         };
     }
 
-    private static TravelTime FindBestTravelWindow(
+    private TravelTime FindBestTravelWindow(
     string location,
     List<WeatherDay> historicalDays,
     int days)
@@ -127,7 +126,7 @@ public class WeatherService
 
         var today = DateTime.UtcNow.Date;
 
-        var (start, end) = GetNextBestTravelWindow(
+        var (start, end) = _utils.GetNextBestTravelWindow(
         best.Week,
         days,
         DateTime.UtcNow);
@@ -151,27 +150,6 @@ public class WeatherService
             ]
         };
     }
-    private async Task<(double lat, double lon)> GetCoordinatesAsync(
-    string location)
-    {
-        var url =
-            $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(location)}";
-
-        var response =
-            await _httpClient.GetFromJsonAsync<Location>(url);
-
-        var first = response?.Results?.FirstOrDefault();
-
-        if (first == null)
-        {
-            throw new AppException(
-                "LOCATION_NOT_FOUND",
-                $"Could not find coordinates for {location}");
-        }
-
-        return (first.Latitude, first.Longitude);
-    }
-
     private static List<WeatherDay> BuildForecasts(ForecastResponse forecast)
     {
         var result = new List<WeatherDay>();
