@@ -38,7 +38,7 @@ public class DisplayName
 
 public class CurrentOpeningHours
 {
-    public bool OpenNow { get; set; }
+    public List<string> WeekDayDescriptions { get; set; } = [];
 }
 
 public class EditorialSummary
@@ -48,8 +48,7 @@ public class EditorialSummary
 
 public class GoogleReview
 {
-    public string Name { get; set; } = string.Empty;
-
+    public int Rating { get; set; }
     public ReviewText Text { get; set; } = new();
 }
 

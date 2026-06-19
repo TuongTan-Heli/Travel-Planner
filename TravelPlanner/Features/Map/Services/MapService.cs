@@ -9,30 +9,35 @@ public class MapService
 {
     private readonly HttpClient _httpClient;
     private readonly Utils _utils;
+    private readonly string _path;
+    private readonly string _searchNearbyUrl;
 
-    private readonly GoogleCredential _credential;
-
-    public MapService(HttpClient httpClient, IConfiguration configuration, Utils utils)
+    public MapService(HttpClient httpClient, Utils utils)
     {
         _httpClient = httpClient;
         _utils = utils;
-
-        var path =
-            Environment.GetEnvironmentVariable("GOOGLE_ACCESS_PATH");
-
-        _credential = GoogleCredential
-            .FromFile(path)
-            .CreateScoped("https://www.googleapis.com/auth/cloud-platform");
+        _searchNearbyUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_NEARBY_API_URL") ?? string.Empty;
+        _path = Environment.GetEnvironmentVariable("GOOGLE_ACCESS_PATH") ?? string.Empty;
     }
 
     private async Task<string> GetAccessTokenAsync()
     {
-        return await _credential.UnderlyingCredential
+        var serviceCredential =
+        (await CredentialFactory
+            .FromFileAsync<ServiceAccountCredential>(_path, CancellationToken.None))
+        .ToGoogleCredential();
+
+        var scoped =
+        serviceCredential.CreateScoped(
+            "https://www.googleapis.com/auth/cloud-platform");
+
+        return await scoped.UnderlyingCredential
             .GetAccessTokenForRequestAsync();
     }
 
     public async Task<List<Place>> GetMapDataAsync(
         string location,
+        //add an interest filter
         IEnumerable<string>? interests = null)
     {
         try
@@ -43,9 +48,8 @@ public class MapService
 
             var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                "https://places.googleapis.com/v1/places:searchNearby");
+                _searchNearbyUrl);
 
-            // ✅ OAuth token (THIS IS REQUIRED)
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
 
@@ -60,6 +64,7 @@ public class MapService
                 "places.currentOpeningHours," +
                 "places.reviews");
 
+//Add interest filter
             var body = new
             {
                 includedTypes = new[] { "tourist_attraction" },
@@ -124,16 +129,20 @@ public class MapService
 
             Rating = (int)Math.Round(p.Rating ?? 0),
 
-            Address = p.FormattedAddress ?? "",
+            Reviews = p.Reviews?.Select(r => new Review
+            {
+                Rating = r.Rating,
+                Text = r.Text?.Text ?? string.Empty
+            })
+                .ToList()
+                ?? [],
+            PriceRange = GetPriceRange(p.PriceLevel ?? 0),
 
             PriceLevel = p.PriceLevel ?? 0,
 
-            PriceRange = GetPriceRange(p.PriceLevel ?? 0),
+            OpenTime = p.CurrentOpeningHours?.WeekDayDescriptions ?? [],
 
-            
-
-            OpenTime = TimeSpan.Zero,
-            CloseTime = TimeSpan.Zero
+            Address = p.FormattedAddress ?? "",
         }).ToList();
     }
 

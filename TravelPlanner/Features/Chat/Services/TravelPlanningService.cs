@@ -43,6 +43,8 @@ public sealed class TravelPlanningService
         {
             TravelTime = weatherTask.Result,
             RecommendedPlaces = placesTask.Result
+            //hotels
+            //restaurants
         };
     }
     
