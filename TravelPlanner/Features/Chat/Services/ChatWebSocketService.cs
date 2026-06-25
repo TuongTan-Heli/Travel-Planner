@@ -163,12 +163,6 @@ public sealed class ChatWebSocketService
 
         var session = GetSession(socket);
 
-        var prompt =
-                    PromptBuilder.Build(
-                        TravelStage.IntentExtraction,
-                        session.Context,
-                        input.Text);
-
         var broadcastMessage = new ChatMessage
         {
             Id = string.IsNullOrWhiteSpace(input.Id) ? Guid.NewGuid().ToString() : input.Id,
@@ -209,7 +203,7 @@ public sealed class ChatWebSocketService
 
                 // AddToHistory(reply);
                 await BroadcastMessageAsync(socket, reply);
-        #endregion
+                #endregion
             }
 
 
@@ -248,37 +242,6 @@ public sealed class ChatWebSocketService
             await Task.Delay(600);
         }
     }
-    // private void AddToHistory(ChatMessage message)
-    // {
-    //     lock (_historyLock)
-    //     {
-    //         _recentMessages.Add(message);
-    //         if (_recentMessages.Count > 100)
-    //         {
-    //             _recentMessages.RemoveAt(0);
-    //         }
-    //     }
-    // }
-
-    // private void AddOrUpdateHistory(ChatMessage message)
-    // {
-    //     lock (_historyLock)
-    //     {
-    //         var index = _recentMessages.FindIndex(m => m.Id == message.Id);
-    //         if (index >= 0)
-    //         {
-    //             _recentMessages[index] = message;
-    //         }
-    //         else
-    //         {
-    //             _recentMessages.Add(message);
-    //             if (_recentMessages.Count > 100)
-    //             {
-    //                 _recentMessages.RemoveAt(0);
-    //             }
-    //         }
-    //     }
-    // }
 
     private sealed class ChatMessageInput
     {

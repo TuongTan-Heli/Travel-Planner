@@ -35,16 +35,17 @@ public sealed class TravelPlanningService
                 session.Context.Days);
         }
 
-        var placesTask = _mapService.GetMapDataAsync(session.Context.Destination!);
+        var placesTask = _mapService.GetMapDataAsync(session.Context);
+
 
         await Task.WhenAll(weatherTask, placesTask);
 
         return new TripPlanningData
         {
             TravelTime = weatherTask.Result,
-            RecommendedPlaces = placesTask.Result
-            //hotels
-            //restaurants
+            RecommendedPlaces = placesTask.Result,
+            // Hotels = placesTask.Result.Hotels,
+            // Restaurants = placesTask.Result.Restaurants
         };
     }
     

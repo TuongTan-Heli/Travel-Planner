@@ -1,3 +1,5 @@
+using TravelPlanner.Features.Map.Model;
+
 public class PromptTemplate
 {
     public static string BuildIntentExtractionPrompt(
@@ -5,6 +7,7 @@ public class PromptTemplate
     string conversationContext = ""
     )
     {
+        var interests = string.Join(", ", MapVariables.InterestCategories);
         return $$"""
             You are a travel planning information extraction engine.
 
@@ -50,6 +53,7 @@ public class PromptTemplate
                 isReadyForPlanning = false
                 assistantMessage = "I don't know much about {topic}. I can only help with travel planning. Where would you like to travel?"
             - Default currency USD
+            - User interest only contain these values {{interests}}
             Required planning fields:
 
             - destination
