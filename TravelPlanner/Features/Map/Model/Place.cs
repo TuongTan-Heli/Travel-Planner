@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using TravelPlanner.Features.Map.Model;
+
 public class Place
 {
     public string Name { get; init; } = string.Empty;
@@ -18,9 +21,9 @@ public class Place
 
     public List<string> OpenTime { get; init; } = [];
 
-    public int PriceLevel { get; init; }
+    public string PriceLevel { get; init; } = "";
 
-    public string PriceRange { get; init; } = string.Empty;
+    public PriceRange? PriceRange { get; init; }
 
     public List<Review> Reviews { get; init; } = [];
 
@@ -79,28 +82,4 @@ public enum PlaceCategory
     Travel,
     Restaurant,
     Hotel,
-}
-public class Review
-{
-    public int Rating { get; init; }
-    public string Text { get; init; } = string.Empty;
-}
-
-public class ReviewSummary
-{
-    public string Text { get; set; } = string.Empty;
-}
-
-public class Photo
-{
-    public string Name { get; set; } = string.Empty;
-}
-
-public class PaymentOptions
-{
-    public bool AcceptsCreditCards { get; set; }
-    public bool AcceptsDebitCards { get; set; }
-    public bool AcceptsCashOnly { get; set; }
-    public bool? AcceptsNfc { get; set; }
-
 }

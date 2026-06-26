@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
+using Microsoft.VisualBasic;
 using TravelPlanner.Features.Map.Model;
 
 namespace TravelPlanner.Features.Map;
@@ -11,10 +12,6 @@ public class MapService
     private readonly Utils _utils;
     private readonly string _path;
     private readonly string _searchNearbyUrl;
-    private readonly List<string> restaurantFilter = ["restaurant", "food", "fast_food_restaurant"];
-
-    private readonly List<string> attractionFilter = ["tourist_attraction", "point_of_interest"];
-
     public MapService(HttpClient httpClient, Utils utils)
     {
         _httpClient = httpClient;
@@ -83,38 +80,97 @@ public class MapService
             #endregion
 
             #region coverage call
-            var total = places.Count;
 
-            var hotelCount = places.Count(x => x.Category == PlaceCategory.Hotel);
-            var restaurantCount = places.Count(x => x.Category == PlaceCategory.Restaurant);
-            var travelCount = places.Count(x => x.Category == PlaceCategory.Travel);
-
-            var hotelRatio = (double)hotelCount / total;
-            var restaurantRatio = (double)restaurantCount / total;
-            var travelRatio = (double)travelCount / total;
-
-            bool needHotels = hotelRatio < 0.10;
-            bool needRestaurants = restaurantRatio < 0.30;
-            bool needTravel = travelRatio < 0.60;
+            var missingPrimaryTypes = GetMissingPrimaryTypes(places, context);
 
             var missingInterests = GetMissingInterests(places, context.Interests);
 
+            if (missingPrimaryTypes.Any() ||
+                missingInterests.Any())
+            {
+                var coverageCall = await GetPlacesAsync(
+                                    lat,
+                                    lon,
+                                    token,
+                                    30000,
+                                    missingPrimaryTypes,
+                                    BuildInterests(missingInterests)
+                                    );
+
+                places.AddRange(coverageCall);
+            }
             #endregion
 
             #region sub city result expand call
+            missingPrimaryTypes = GetMissingPrimaryTypes(places, context);
+            missingInterests = GetMissingInterests(places, context.Interests);
 
+            if (context.Days >= 10 || places.Count < context.Days * 4 || missingPrimaryTypes.Any() || missingInterests.Any())
+            {
+                var subCityCall = await GetPlacesAsync(
+                                                    lat,
+                                                    lon,
+                                                    token,
+                                                    50000,
+                                                    missingPrimaryTypes,
+                                                    BuildInterests(context.Interests)
+                                                    );
+
+                places.AddRange(subCityCall);
+            }
             #endregion
-
 
             #region far city result expand call
 
-            #endregion
-            places = places
-                .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(g => g.First())
-                .ToList();
+            var searchAttempts = new[]
+                                    {
+                                    new
+                                    {
+                                        Radius = 50000,
+                                        Interests = BuildRandomInterests(context.Interests)
+                                    },
+                                    new
+                                    {
+                                        Radius = 50000,
+                                        Interests = BuildRandomInterests(context.Interests)
+                                    },
+                                    new
+                                    {
+                                        Radius = 50000,
+                                        Interests = BuildRandomInterests(context.Interests)
+                                    }
+                                };
 
-            
+            foreach (var attempt in searchAttempts)
+            {
+                missingPrimaryTypes = GetMissingPrimaryTypes(places, context);
+
+                if (!missingPrimaryTypes.Any() || places.Count < context.Days * 4)
+                    break;
+
+                var before = places.Count;
+
+                var result = await GetPlacesAsync(
+                    lat,
+                    lon,
+                    token,
+                    attempt.Radius,
+                    missingPrimaryTypes,
+                    attempt.Interests);
+
+                places.AddRange(result);
+
+                places = places
+                    .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+
+                if (places.Count == before)
+                    break;
+            }
+            #endregion
+
+
             return places;
         }
         catch (Exception ex)
@@ -123,6 +179,45 @@ public class MapService
                 "MAP_SERVICE_ERROR",
                 ex.ToString());
         }
+    }
+    private List<string> GetMissingPrimaryTypes(
+    List<Place> places,
+    TravelPromptContext context)
+    {
+        var missing = new List<string>();
+
+        var travelCount =
+            places.Count(x => x.Category == PlaceCategory.Travel);
+
+        var restaurantCount =
+            places.Count(x => x.Category == PlaceCategory.Restaurant);
+
+        var hotelCount =
+            places.Count(x => x.Category == PlaceCategory.Hotel);
+
+        // Capacity requirements
+        var requiredTravel = context.Days * 3;
+        var requiredRestaurants = context.Days * 3;
+        var requiredHotels = context.Days;
+
+        if (travelCount < requiredTravel)
+        {
+            missing.AddRange(MapVariables.PrimaryTravelTypes);
+        }
+
+        if (restaurantCount < requiredRestaurants)
+        {
+            missing.AddRange(MapVariables.PrimaryRestaurantTypes);
+        }
+
+        if (hotelCount < requiredHotels)
+        {
+            missing.AddRange(MapVariables.PrimaryHotelTypes);
+        }
+
+        return missing
+            .Distinct()
+            .ToList();
     }
 
     private async Task<List<Place>> GetPlacesAsync(
@@ -232,8 +327,8 @@ public class MapService
             Rating = (int)Math.Round(p.Rating ?? 0),
             UserRatingCount = p.UserRatingCount ?? 0,
             OpenTime = p.CurrentOpeningHours?.WeekDayDescriptions ?? [],
-            PriceLevel = p.PriceLevel ?? 0,
-            PriceRange = GetPriceRange(p.PriceLevel ?? 0),
+            PriceLevel = p.PriceLevel ?? "",
+            PriceRange = p.PriceRange,
             Reviews = p.Reviews?
                 .Select(r => new Review
                 {
@@ -272,29 +367,6 @@ public class MapService
         }).ToList();
     }
 
-    private static List<string> DetermineInterests(
-    IEnumerable<string> types)
-    {
-        return MapVariables.InterestTypes
-            .Where(x => x.Value.Any(types.Contains))
-            .Select(x => x.Key)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    private static string GetPriceRange(int level)
-    {
-        return level switch
-        {
-            0 => "Free",
-            1 => "$",
-            2 => "$$",
-            3 => "$$$",
-            4 => "$$$$",
-            _ => ""
-        };
-    }
-
     private static PlaceCategory GetCategory(GooglePlace place)
     {
         var types = place.PrimaryType;
@@ -327,5 +399,43 @@ public class MapService
         .Distinct()
         .Take(50)
         .ToList();
+    }
+    private static readonly Random Random = new();
+
+    private static List<string> BuildRandomInterests(
+        IEnumerable<string>? interests,
+        int minPerGroup = 2,
+        int maxPerGroup = 4)
+    {
+        if (interests == null || !interests.Any())
+        {
+            return MapVariables.DefaultTypes
+                .OrderBy(_ => Random.Next())
+                .Take(50)
+                .ToList();
+        }
+
+        var result = new List<string>();
+
+        foreach (var interest in interests)
+        {
+            if (!MapVariables.InterestTypes.TryGetValue(interest, out var types))
+                continue;
+
+            var count = Math.Min(
+                Random.Next(minPerGroup, maxPerGroup + 1),
+                types.Length);
+
+            result.AddRange(
+                types
+                    .OrderBy(_ => Random.Next())
+                    .Take(count));
+        }
+
+        return result
+            .Distinct()
+            .OrderBy(_ => Random.Next())
+            .Take(50)
+            .ToList();
     }
 }

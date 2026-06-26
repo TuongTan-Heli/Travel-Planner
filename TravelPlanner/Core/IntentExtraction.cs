@@ -31,15 +31,9 @@ public sealed class IntentExtractionService
 
         var result = JsonSerializer.Deserialize<TravelIntentResult>(
             replyText,
-            options);
-
-        if (result is null)
-        {
-            throw new AppException(
+            options) ?? throw new AppException(
                 "INTENT_PARSE_ERROR",
                 "Failed to parse intent extraction result.");
-        }
-
         MergeContext(session.Context, result);
 
         var ready = session.Context.IsReadyForPlanning();

@@ -25,7 +25,7 @@ public class GooglePlace
 
     public CurrentOpeningHours? CurrentOpeningHours { get; set; }
 
-    public int? PriceLevel { get; set; }
+    public string PriceLevel { get; set; } = "";
 
     public PriceRange? PriceRange { get; set; }
 
@@ -136,4 +136,12 @@ public class Money
 public class ReviewSummary
 {
     public string? Text { get; set; }
+}
+public class PaymentOptions
+{
+    public bool AcceptsCreditCards { get; set; }
+    public bool AcceptsDebitCards { get; set; }
+    public bool AcceptsCashOnly { get; set; }
+    public bool? AcceptsNfc { get; set; }
+
 }

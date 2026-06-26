@@ -1,5 +1,4 @@
 using TravelPlanner.Features.Map.Model;
-
 public class PromptTemplate
 {
     public static string BuildIntentExtractionPrompt(
