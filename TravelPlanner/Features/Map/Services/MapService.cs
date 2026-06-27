@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
+using Microsoft.AspNetCore.Routing.Matching;
 using Microsoft.VisualBasic;
 using TravelPlanner.Features.Map.Model;
 
@@ -12,6 +13,9 @@ public class MapService
     private readonly Utils _utils;
     private readonly string _path;
     private readonly string _searchNearbyUrl;
+    private const int maxAttemptCall = 5;
+    private int AttemptCall = 0;
+    private int consecutiveDuplicateCalls = 0;
     public MapService(HttpClient httpClient, Utils utils)
     {
         _httpClient = httpClient;
@@ -61,115 +65,53 @@ public class MapService
                             .Select(x => x.First())
                             .ToList());
             //update thinking meessage with thinkingId
-            #endregion 
-
-            #region enrich call
-            if (context.Days >= 5 || context.Interests.Count >= 3)
-            {
-                var enrichCall = await GetPlacesAsync(
-                                    lat,
-                                    lon,
-                                    token,
-                                    30000,
-                                    MapVariables.PrimaryTypes,
-                                    BuildInterests(context.Interests)
-                                    );
-
-                places.AddRange(enrichCall);
-            }
+            AttemptCall++;
             #endregion
-
-            #region coverage call
-
-            var missingPrimaryTypes = GetMissingPrimaryTypes(places, context);
-
-            var missingInterests = GetMissingInterests(places, context.Interests);
-
-            if (missingPrimaryTypes.Any() ||
-                missingInterests.Any())
+            while (AttemptCall < maxAttemptCall)
             {
-                var coverageCall = await GetPlacesAsync(
-                                    lat,
-                                    lon,
-                                    token,
-                                    30000,
-                                    missingPrimaryTypes,
-                                    BuildInterests(missingInterests)
-                                    );
+                var missingInterests =
+                    GetMissingInterests(places, context.Interests);
 
-                places.AddRange(coverageCall);
-            }
-            #endregion
+                var missingTypes =
+                    GetMissingPrimaryTypes(places, context);
 
-            #region sub city result expand call
-            missingPrimaryTypes = GetMissingPrimaryTypes(places, context);
-            missingInterests = GetMissingInterests(places, context.Interests);
-
-            if (context.Days >= 10 || places.Count < context.Days * 4 || missingPrimaryTypes.Any() || missingInterests.Any())
-            {
-                var subCityCall = await GetPlacesAsync(
-                                                    lat,
-                                                    lon,
-                                                    token,
-                                                    50000,
-                                                    missingPrimaryTypes,
-                                                    BuildInterests(context.Interests)
-                                                    );
-
-                places.AddRange(subCityCall);
-            }
-            #endregion
-
-            #region far city result expand call
-
-            var searchAttempts = new[]
-                                    {
-                                    new
-                                    {
-                                        Radius = 50000,
-                                        Interests = BuildRandomInterests(context.Interests)
-                                    },
-                                    new
-                                    {
-                                        Radius = 50000,
-                                        Interests = BuildRandomInterests(context.Interests)
-                                    },
-                                    new
-                                    {
-                                        Radius = 50000,
-                                        Interests = BuildRandomInterests(context.Interests)
-                                    }
-                                };
-
-            foreach (var attempt in searchAttempts)
-            {
-                missingPrimaryTypes = GetMissingPrimaryTypes(places, context);
-
-                if (!missingPrimaryTypes.Any() || places.Count < context.Days * 4)
+                if (!missingInterests.Any() &&
+                    !missingTypes.Any() &&
+                    places.Count >= context.Days * 4)
+                {
                     break;
+                }
 
                 var before = places.Count;
-
-                var result = await GetPlacesAsync(
-                    lat,
-                    lon,
+                var (newLat, newLon) = GetRandomCenter(lat, lon, Random.Next(2, 11) * 1000);
+                var results = await GetPlacesAsync(
+                    newLat,
+                    newLon,
                     token,
-                    attempt.Radius,
-                    missingPrimaryTypes,
-                    attempt.Interests);
+                    Random.Next(2, 11) * 5000,
+                    missingTypes.Any()
+                        ? missingTypes
+                        : MapVariables.PrimaryTravelTypes,
+                    missingInterests.Any()
+                        ? BuildRandomInterests(missingInterests)
+                        : BuildRandomInterests(context.Interests)
+                );
 
-                places.AddRange(result);
-
-                places = places
-                    .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(g => g.First())
-                    .ToList();
+                places = places = places
+                        .Concat(results)
+                        .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(g => g.First())
+                        .ToList();
 
                 if (places.Count == before)
+                    consecutiveDuplicateCalls++;
+                if (consecutiveDuplicateCalls >= 2)
+                {
                     break;
-            }
-            #endregion
+                }
 
+                AttemptCall++;
+            }
 
             return places;
         }
@@ -196,9 +138,9 @@ public class MapService
             places.Count(x => x.Category == PlaceCategory.Hotel);
 
         // Capacity requirements
-        var requiredTravel = context.Days * 3;
-        var requiredRestaurants = context.Days * 3;
-        var requiredHotels = context.Days;
+        var requiredTravel = context.Days * 4; //50%
+        var requiredRestaurants = context.Days * 3; //37.5%
+        var requiredHotels = context.Days; //12.5%
 
         if (travelCount < requiredTravel)
         {
@@ -220,6 +162,38 @@ public class MapService
             .ToList();
     }
 
+    private static (double Latitude, double Longitude) GetRandomCenter(
+        double latitude,
+        double longitude,
+        int maxRadiusMeters)
+    {
+        const double EarthRadius = 6378137.0; // meters
+
+        // Random distance (uniform over area)
+        var distance = Math.Sqrt(Random.NextDouble()) * maxRadiusMeters;
+
+        // Random direction
+        var bearing = Random.NextDouble() * 2 * Math.PI;
+
+        var latRad = latitude * Math.PI / 180.0;
+        var lonRad = longitude * Math.PI / 180.0;
+
+        var angularDistance = distance / EarthRadius;
+
+        var newLat = Math.Asin(
+            Math.Sin(latRad) * Math.Cos(angularDistance) +
+            Math.Cos(latRad) * Math.Sin(angularDistance) * Math.Cos(bearing));
+
+        var newLon = lonRad + Math.Atan2(
+            Math.Sin(bearing) * Math.Sin(angularDistance) * Math.Cos(latRad),
+            Math.Cos(angularDistance) -
+            Math.Sin(latRad) * Math.Sin(newLat));
+
+        return (
+            newLat * 180.0 / Math.PI,
+            newLon * 180.0 / Math.PI
+        );
+    }
     private async Task<List<Place>> GetPlacesAsync(
     double lat,
     double lon,
