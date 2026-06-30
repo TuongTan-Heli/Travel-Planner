@@ -1,8 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
-using Microsoft.AspNetCore.Routing.Matching;
-using Microsoft.VisualBasic;
 using TravelPlanner.Features.Map.Model;
 
 namespace TravelPlanner.Features.Map;
@@ -14,8 +12,7 @@ public class MapService
     private readonly string _path;
     private readonly string _searchNearbyUrl;
     private const int maxAttemptCall = 5;
-    private int AttemptCall = 0;
-    private int consecutiveDuplicateCalls = 0;
+
     public MapService(HttpClient httpClient, Utils utils)
     {
         _httpClient = httpClient;
@@ -41,6 +38,8 @@ public class MapService
 
     public async Task<List<Place>> GetMapDataAsync(TravelPromptContext context)
     {
+        int AttemptCall = 0;
+        int consecutiveDuplicateCalls = 0;
         try
         {
             List<Place> places = new List<Place>();
@@ -92,22 +91,32 @@ public class MapService
                     missingTypes.Any()
                         ? missingTypes
                         : MapVariables.PrimaryTravelTypes,
-                    missingInterests.Any()
+                    consecutiveDuplicateCalls >= 2 ? BuildRandomInterests([]) : missingInterests.Any()
                         ? BuildRandomInterests(missingInterests)
                         : BuildRandomInterests(context.Interests)
                 );
 
-                places = places = places
+                places = places
                         .Concat(results)
                         .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                         .Select(g => g.First())
                         .ToList();
 
+
+                // if (consecutiveDuplicateCalls >= 2)
+                // {
+                //     if (isRandomized)
+                //     {
+                //         break;
+                //     }
+                //     else
+                //     {
+                //         isRandomized = true;
+                //     }
+                // }
                 if (places.Count == before)
-                    consecutiveDuplicateCalls++;
-                if (consecutiveDuplicateCalls >= 2)
                 {
-                    break;
+                    consecutiveDuplicateCalls++;
                 }
 
                 AttemptCall++;
@@ -311,7 +320,7 @@ public class MapService
                 })
                 .ToList()
                 ?? [],
-            ReviewSummary = p.ReviewSummary?.Text ?? string.Empty,
+            ReviewSummary = p.ReviewSummary?.Text?.Text ?? "",
             PhoneNumber = p.InternationalPhoneNumber ?? "",
             WebsiteUrl = p.WebsiteUri ?? "",
             DineIn = p.DineIn,

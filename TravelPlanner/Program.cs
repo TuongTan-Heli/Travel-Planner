@@ -27,6 +27,7 @@ builder.Services.AddControllers();
 builder.Services.AddHttpClient<ChatService>();
 builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddHttpClient<MapService>();
+builder.Services.AddSingleton<ScoringService>();
 builder.Services.AddSingleton<ChatWebSocketService>();
 builder.Services.AddSingleton<IntentExtractionService>();
 builder.Services.AddSingleton<TravelPlanningService>();

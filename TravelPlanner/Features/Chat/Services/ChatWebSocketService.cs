@@ -12,22 +12,20 @@ public sealed class ChatWebSocketService
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
-
     private readonly ConcurrentDictionary<WebSocket, object> _sockets = new();
-    // private readonly List<ChatMessage> _recentMessages = new();
-    // private readonly object _historyLock = new();
     private readonly ChatService _chatService;
-
     private readonly WebSocketNotifier _webSocketNotifier;
     private readonly IntentExtractionService _intentExtractionService;
     private readonly TravelPlanningService _travelPlanningService;
+    private readonly ScoringService _scoringService;
     private readonly ConcurrentDictionary<WebSocket, TravelSession> _sessions = new();
-    public ChatWebSocketService(ChatService chatService, IntentExtractionService intentExtractionService, TravelPlanningService travelPlanningService, WebSocketNotifier webSocketNotifier)
+    public ChatWebSocketService(ChatService chatService, IntentExtractionService intentExtractionService, TravelPlanningService travelPlanningService, WebSocketNotifier webSocketNotifier, ScoringService scoringService)
     {
         _chatService = chatService;
         _intentExtractionService = intentExtractionService;
         _travelPlanningService = travelPlanningService;
         _webSocketNotifier = webSocketNotifier;
+        _scoringService = scoringService;
     }
     private TravelSession GetSession(WebSocket socket)
     {
@@ -162,7 +160,7 @@ public sealed class ChatWebSocketService
         #endregion
 
         var session = GetSession(socket);
-
+        var travelResponse = new TravelResponse();
         var broadcastMessage = new ChatMessage
         {
             Id = string.IsNullOrWhiteSpace(input.Id) ? Guid.NewGuid().ToString() : input.Id,
@@ -209,10 +207,15 @@ public sealed class ChatWebSocketService
 
             if (session.Stage == TravelStage.LocationSelection)
             {
-                var TravelPlanningTask = await _travelPlanningService.BuildPlanningDataAsync(session);
-                // await TravelPlanningTask;
+                travelResponse.TripPlanningData = await _travelPlanningService.BuildPlanningDataAsync(session);
+                
             }
-            
+
+            if (session.Stage == TravelStage.Scoring)
+            {
+                travelResponse = await _scoringService.ScorePlaces(travelResponse, session);
+            }
+
         }
         catch (AppException ex)
         {

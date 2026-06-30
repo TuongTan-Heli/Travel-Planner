@@ -135,7 +135,7 @@ public class Money
 
 public class ReviewSummary
 {
-    public string? Text { get; set; }
+    public ReviewText? Text { get; set; }
 }
 public class PaymentOptions
 {

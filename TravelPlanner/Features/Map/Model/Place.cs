@@ -76,6 +76,8 @@ public class Place
     public bool? ServesWine { get; init; }
 
     public bool? Takeout { get; init; }
+
+    public PlaceScore Score {get; set;} = new();
 }
 public enum PlaceCategory
 {

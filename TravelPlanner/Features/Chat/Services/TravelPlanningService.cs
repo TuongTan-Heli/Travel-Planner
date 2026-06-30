@@ -2,6 +2,7 @@ using TravelPlanner.Features.Map;
 using TravelPlanner.Features.Weather.Services.WeatherService;
 
 namespace TravelPlanner;
+
 public sealed class TravelPlanningService
 {
     private readonly WeatherService _weatherService;
@@ -40,13 +41,11 @@ public sealed class TravelPlanningService
 
         await Task.WhenAll(weatherTask, placesTask);
 
+        session.Stage = TravelStage.Scoring;
         return new TripPlanningData
         {
             TravelTime = weatherTask.Result,
             RecommendedPlaces = placesTask.Result,
-            // Hotels = placesTask.Result.Hotels,
-            // Restaurants = placesTask.Result.Restaurants
         };
     }
-    
 }
