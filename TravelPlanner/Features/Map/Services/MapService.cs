@@ -73,8 +73,11 @@ public class MapService
 
                 var missingTypes =
                     GetMissingPrimaryTypes(places, context);
+                var interestCoverage = GetInterestCoverage(
+                    places,
+                    context.Interests);
 
-                if (!missingInterests.Any() &&
+                if (interestCoverage >= 0.7 &&
                     !missingTypes.Any() &&
                     places.Count >= context.Days * 4)
                 {
@@ -169,6 +172,25 @@ public class MapService
         return missing
             .Distinct()
             .ToList();
+    }
+
+    private double GetInterestCoverage(
+    List<Place> places,
+    List<string> interests)
+    {
+        if (interests == null || interests.Count == 0)
+            return 1.0;
+
+        var covered = interests.Count(interest =>
+        {
+            if (!MapVariables.InterestTypes.TryGetValue(interest, out var types))
+                return false;
+
+            return places.Any(place =>
+                place.Types.Any(type => types.Contains(type)));
+        });
+
+        return (double)covered / interests.Count;
     }
 
     private static (double Latitude, double Longitude) GetRandomCenter(
@@ -311,7 +333,19 @@ public class MapService
             UserRatingCount = p.UserRatingCount ?? 0,
             OpenTime = p.CurrentOpeningHours?.WeekDayDescriptions ?? [],
             PriceLevel = p.PriceLevel ?? "",
-            PriceRange = p.PriceRange,
+            PriceRange = p.PriceRange is null ? null : new PriceRange
+            {
+                StartPrice = new Money
+                {
+                    CurrencyCode = p.PriceRange?.StartPrice?.CurrencyCode ?? "",
+                    Units = decimal.TryParse(p.PriceRange?.StartPrice?.Units, out var s) ? s : 0
+                },
+                EndPrice = new Money
+                {
+                    CurrencyCode = p.PriceRange?.EndPrice?.CurrencyCode ?? "",
+                    Units = decimal.TryParse(p.PriceRange?.EndPrice?.Units, out var e) ? e : 0
+                }
+            },
             Reviews = p.Reviews?
                 .Select(r => new Review
                 {

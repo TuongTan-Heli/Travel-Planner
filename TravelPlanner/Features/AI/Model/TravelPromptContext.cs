@@ -1,15 +1,17 @@
+using TravelPlanner.Features.Map.Model;
+
 public class TravelPromptContext
 {
     public string? Destination { get; set; }
     public int? Days { get; set; }
-    public decimal? Budget { get; set; }
-    public string? Currency {get; set;}
+    public Money? Budget { get; set; }
     public int? Travelers { get; set; }
     public bool IsReadyForPlanning()
     {
         return !string.IsNullOrWhiteSpace(Destination)
-                  && (Days.HasValue || (StartDate != null && EndDate != null))
-               && Budget.HasValue;
+       && (Days.HasValue || (StartDate != null && EndDate != null))
+        && Budget?.Units > 0
+        && !string.IsNullOrWhiteSpace(Budget?.CurrencyCode);
         // Destination = "Ho Chi Minh city";
         // Budget = 10000;
         // Days = 5;

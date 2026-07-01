@@ -27,7 +27,7 @@ public class GooglePlace
 
     public string PriceLevel { get; set; } = "";
 
-    public PriceRange? PriceRange { get; set; }
+    public GooglePriceRange? PriceRange { get; set; }
 
     public List<GoogleReview>? Reviews { get; set; }
 
@@ -117,20 +117,34 @@ public class Photo
     public string Name { get; set; } = "";
 }
 
+public class GooglePriceRange
+{
+    public GoogleMoney StartPrice { get; set; } = new();
+
+    public GoogleMoney EndPrice { get; set; } = new();
+}
+
+public class GoogleMoney
+{
+    public string CurrencyCode { get; set; } = "";
+
+    public string Units { get; set; } = "";
+
+}
+
 public class PriceRange
 {
-    public Money? StartPrice { get; set; }
+    public Money StartPrice { get; set; } = new();
 
-    public Money? EndPrice { get; set; }
+    public Money EndPrice { get; set; } = new();
 }
 
 public class Money
 {
-    public string? CurrencyCode { get; set; }
+    public string CurrencyCode { get; set; } = "";
 
-    public string? Units { get; set; }
+    public decimal Units { get; set; }
 
-    public int? Nanos { get; set; }
 }
 
 public class ReviewSummary

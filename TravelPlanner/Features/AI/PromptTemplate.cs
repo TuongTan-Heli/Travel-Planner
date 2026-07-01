@@ -6,7 +6,6 @@ public class PromptTemplate
     string conversationContext = ""
     )
     {
-        var interests = string.Join(", ", MapVariables.InterestCategories);
         return $$"""
             You are a travel planning information extraction engine.
 
@@ -28,7 +27,10 @@ public class PromptTemplate
             "startDate": null,
             "endDate": null,
             "days": null,
-            "budget": null, *number only*
+            "budget": {
+                        "units: null,
+                        "currencyCode": ""
+                        }
             "currency": null,
             "travelers": null,
             "interests": [],
@@ -52,9 +54,13 @@ public class PromptTemplate
                 isReadyForPlanning = false
                 assistantMessage = "I don't know much about {topic}. I can only help with travel planning. Where would you like to travel?"
             - Default currency USD
-            - User interest only contain these values {{interests}}
+            - User interest only contain these values {{string.Join(", ", MapVariables.InterestCategories)}}
+            - User preferences only contain these values {{string.Join(", ", MapVariables.PreferenceCategories)}}
+            - budget.units must be a number only (no commas, symbols, or text).
+            - budget.currencyCode must be a valid ISO-4217 currency code (USD, AUD, EUR, VND, JPY, GBP, etc.).
+            - If the user does not specify a currency, use "USD".
+            - If the budget is unknown, return: "budget": null
             Required planning fields:
-
             - destination
             - travel dates OR trip duration
             - budget

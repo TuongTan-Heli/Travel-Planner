@@ -32,7 +32,9 @@ builder.Services.AddSingleton<ChatWebSocketService>();
 builder.Services.AddSingleton<IntentExtractionService>();
 builder.Services.AddSingleton<TravelPlanningService>();
 builder.Services.AddSingleton<WebSocketNotifier>();
+builder.Services.AddHttpClient<CurrencyExchangeService>();
 builder.Services.AddHttpClient<Utils>();
+builder.Services.AddMemoryCache();
 
 var app = builder.Build();
 

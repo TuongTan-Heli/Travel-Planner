@@ -65,7 +65,7 @@ public sealed class IntentExtractionService
         if (result.Days.HasValue)
             ctx.Days = result.Days;
 
-        if (result.Budget.HasValue)
+        if (result.Budget is not null)
             ctx.Budget = result.Budget;
 
         if (result.Travelers.HasValue)

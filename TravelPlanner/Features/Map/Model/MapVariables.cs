@@ -212,7 +212,7 @@ public static class MapVariables
             };
     public static readonly string[] InterestCategories =
     [
-    "attraction",
+            "attraction",
             "nature",
             "culture",
             "entertainment",
@@ -223,6 +223,14 @@ public static class MapVariables
             "family",
             "adventure",
             "relaxation"
+    ];
+
+    public static readonly string[] PreferenceCategories =
+    [
+            "Review",
+            "Cheap",
+            "Luxury",
+            "Convenient",
     ];
 
     public static readonly string[] DefaultTypes =
