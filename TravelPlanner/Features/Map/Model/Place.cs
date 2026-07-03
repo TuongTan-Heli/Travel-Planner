@@ -7,7 +7,7 @@ public class Place
 
     public string Address { get; init; } = string.Empty;
 
-    public Altitude? Location { get; set; }
+    public Altitude Location { get; set; } = new();
 
     public List<string> Photos { get; set; } = [];
 

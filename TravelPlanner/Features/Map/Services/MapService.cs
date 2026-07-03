@@ -105,18 +105,6 @@ public class MapService
                         .Select(g => g.First())
                         .ToList();
 
-
-                // if (consecutiveDuplicateCalls >= 2)
-                // {
-                //     if (isRandomized)
-                //     {
-                //         break;
-                //     }
-                //     else
-                //     {
-                //         isRandomized = true;
-                //     }
-                // }
                 if (places.Count == before)
                 {
                     consecutiveDuplicateCalls++;
@@ -124,10 +112,9 @@ public class MapService
 
                 AttemptCall++;
             }
-
             return places;
         }
-        catch (Exception ex)
+        catch (AppException ex)
         {
             throw new AppException(
                 "MAP_SERVICE_ERROR",

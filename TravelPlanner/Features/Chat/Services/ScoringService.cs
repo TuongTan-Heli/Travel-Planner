@@ -6,7 +6,7 @@ namespace TravelPlanner;
 public sealed class ScoringService
 {
     private readonly CurrencyExchangeService _currencyExchangeService;
-    public ScoringService (CurrencyExchangeService currencyExchangeService)
+    public ScoringService(CurrencyExchangeService currencyExchangeService)
     {
         _currencyExchangeService = currencyExchangeService;
     }
@@ -18,7 +18,7 @@ public sealed class ScoringService
 
         foreach (var place in response.TripPlanningData.RecommendedPlaces)
         {
-            place.Score = await ScorePlace(place, session, weights);
+            place.Score = await ScorePlace(place, session, weights, response.TripPlanningData.Altitude);
         }
 
         response.TripPlanningData.RecommendedPlaces =
@@ -32,7 +32,8 @@ public sealed class ScoringService
     private async Task<PlaceScore> ScorePlace(
     Place place,
     TravelSession session,
-    ScoreWeights weights)
+    ScoreWeights weights,
+    Altitude altitude)
     {
         var result = new PlaceScore();
 
@@ -57,16 +58,11 @@ public sealed class ScoringService
         AddScore(
             result,
             "Route",
-            ScoreRoute(place, session),
+            ScoreRoute(place, altitude),
             weights.Route);
 
-        AddScore(
-            result,
-            "Crowd",
-            ScoreCrowd(place),
-            weights.Crowd);
-
         return result;
+        //Adjust weigth, score range
     }
 
     private static void AddScore(
@@ -121,12 +117,12 @@ public sealed class ScoringService
 
         decimal priceLevel = (decimal)ScorePriceLevel(place, session);
 
-        decimal confidence = (decimal)ScorePriceConfidence(place);
+        // decimal confidence = (decimal)ScorePriceConfidence(place);
 
         decimal score =
             budgetFit * 0.5m +
-            priceLevel * 0.3m +
-            confidence * 0.2m;
+            priceLevel * 0.3m;
+        // confidence * 0.2m;
 
         return (double)score;
     }
@@ -237,13 +233,13 @@ public sealed class ScoringService
         };
     }
 
-    private double ScorePriceConfidence(
-    Place place)
-    {
-        return place.PriceRange != null
-            ? 1.0
-            : 0.8;
-    }
+    // private double ScorePriceConfidence(
+    // Place place)
+    // {
+    //     return place.PriceRange != null
+    //         ? 1.0
+    //         : 0.8;
+    // }
 
 
     private double ScoreInterest(
@@ -266,15 +262,44 @@ public sealed class ScoringService
 
     private double ScoreRoute(
     Place place,
-    TravelSession session)
+    Altitude altitude)
     {
-        return 1;
+        double distance = Haversine(
+                                place.Location.Latitude,
+                                place.Location.Longitude,
+                                altitude.Latitude,
+                                altitude.Longitude);
+
+        return 5 - (distance * 0.1);
     }
 
-    private double ScoreCrowd(
-    Place place)
+    private const double EarthRadiusKm = 6371.0;
+
+    public static double Haversine(
+        double lat1,
+        double lon1,
+        double lat2,
+        double lon2)
     {
-        return 0.5;
+        double dLat = DegreesToRadians(lat2 - lat1);
+        double dLon = DegreesToRadians(lon2 - lon1);
+
+        lat1 = DegreesToRadians(lat1);
+        lat2 = DegreesToRadians(lat2);
+
+        double a =
+            Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+            Math.Cos(lat1) * Math.Cos(lat2) *
+            Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+        double c = 2 * Math.Asin(Math.Sqrt(a));
+
+        return EarthRadiusKm * c;
+    }
+
+    private static double DegreesToRadians(double degrees)
+    {
+        return degrees * Math.PI / 180.0;
     }
 
     private ScoreWeights BuildWeights(
@@ -284,9 +309,6 @@ public sealed class ScoringService
 
         if (session.Context.Preferences.Contains("Review"))
             w.Rating *= 1.5;
-
-        // if (session.Context.Preferences.Contains("Cheap"))
-        //     w.Budget *= 1.5;
 
         if (session.Context.Preferences.Contains("Convenient"))
             w.Route *= 1.5;

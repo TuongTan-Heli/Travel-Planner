@@ -11,7 +11,7 @@ public class GooglePlace
 
     public string? FormattedAddress { get; set; }
 
-    public Altitude? Location { get; set; }
+    public Altitude Location { get; set; } = new();
 
     public List<Photo>? Photos { get; set; }
 

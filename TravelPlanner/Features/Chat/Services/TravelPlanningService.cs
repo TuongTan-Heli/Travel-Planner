@@ -7,11 +7,13 @@ public sealed class TravelPlanningService
 {
     private readonly WeatherService _weatherService;
     private readonly MapService _mapService;
+    private readonly Utils _utils;
 
-    public TravelPlanningService(WeatherService weatherService, MapService mapService)
+    public TravelPlanningService(WeatherService weatherService, MapService mapService, Utils utils)
     {
         _weatherService = weatherService;
         _mapService = mapService;
+        _utils = utils;
     }
 
     public async Task<TripPlanningData> BuildPlanningDataAsync(TravelSession session)
@@ -38,6 +40,8 @@ public sealed class TravelPlanningService
 
         var placesTask = _mapService.GetMapDataAsync(session.Context);
 
+        var (lat, lon) = await _utils.GetCoordinatesAsync(
+                            session.Context.Destination ?? "");
 
         await Task.WhenAll(weatherTask, placesTask);
 
@@ -46,6 +50,11 @@ public sealed class TravelPlanningService
         {
             TravelTime = weatherTask.Result,
             RecommendedPlaces = placesTask.Result,
+            Altitude = new Altitude
+            {
+                Latitude = lat,
+                Longitude = lon
+            }
         };
     }
 }
