@@ -1,32 +1,46 @@
 
 using TravelPlanner.Features.Map.Model;
 
-namespace TravelPlanner;
+namespace TravelPlanner.Features.Chat.Services;
 
 public sealed class ScoringService
 {
     private readonly CurrencyExchangeService _currencyExchangeService;
-    public ScoringService(CurrencyExchangeService currencyExchangeService)
+
+    private readonly Utils _utils;
+
+    public ScoringService(CurrencyExchangeService currencyExchangeService, Utils utils)
     {
         _currencyExchangeService = currencyExchangeService;
+        _utils = utils;
     }
     public async Task<TravelResponse> ScorePlaces(
     TravelResponse response,
     TravelSession session)
     {
-        var weights = BuildWeights(session);
-
-        foreach (var place in response.TripPlanningData.RecommendedPlaces)
+        try
         {
-            place.Score = await ScorePlace(place, session, weights, response.TripPlanningData.Altitude);
+            var weights = BuildWeights(session);
+
+            foreach (var place in response.TripPlanningData.RecommendedPlaces)
+            {
+                place.Score = await ScorePlace(place, session, weights, response.TripPlanningData.Altitude);
+            }
+
+            response.TripPlanningData.RecommendedPlaces =
+                response.TripPlanningData.RecommendedPlaces
+                    .OrderByDescending(p => p.Score.TotalScore)
+                    .ToList();
+
+            session.Stage = TravelStage.SetupItinerary;
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+           throw new AppException("SCRO_ERR","Error while scoring places", ex); 
         }
 
-        response.TripPlanningData.RecommendedPlaces =
-            response.TripPlanningData.RecommendedPlaces
-                .OrderByDescending(p => p.Score.TotalScore)
-                .ToList();
-
-        return response;
     }
 
     private async Task<PlaceScore> ScorePlace(
@@ -264,7 +278,7 @@ public sealed class ScoringService
     Place place,
     Altitude altitude)
     {
-        double distance = Haversine(
+        double distance = _utils.Haversine(
                                 place.Location.Latitude,
                                 place.Location.Longitude,
                                 altitude.Latitude,
@@ -273,34 +287,6 @@ public sealed class ScoringService
         return 5 - (distance * 0.1);
     }
 
-    private const double EarthRadiusKm = 6371.0;
-
-    public static double Haversine(
-        double lat1,
-        double lon1,
-        double lat2,
-        double lon2)
-    {
-        double dLat = DegreesToRadians(lat2 - lat1);
-        double dLon = DegreesToRadians(lon2 - lon1);
-
-        lat1 = DegreesToRadians(lat1);
-        lat2 = DegreesToRadians(lat2);
-
-        double a =
-            Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-            Math.Cos(lat1) * Math.Cos(lat2) *
-            Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
-        double c = 2 * Math.Asin(Math.Sqrt(a));
-
-        return EarthRadiusKm * c;
-    }
-
-    private static double DegreesToRadians(double degrees)
-    {
-        return degrees * Math.PI / 180.0;
-    }
 
     private ScoreWeights BuildWeights(
     TravelSession session)

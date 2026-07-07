@@ -33,6 +33,8 @@ builder.Services.AddSingleton<IntentExtractionService>();
 builder.Services.AddSingleton<TravelPlanningService>();
 builder.Services.AddSingleton<WebSocketNotifier>();
 builder.Services.AddHttpClient<CurrencyExchangeService>();
+builder.Services.AddSingleton<SetupItineraryService>();
+
 builder.Services.AddHttpClient<Utils>();
 builder.Services.AddMemoryCache();
 

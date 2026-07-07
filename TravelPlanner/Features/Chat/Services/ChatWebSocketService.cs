@@ -13,19 +13,20 @@ public sealed class ChatWebSocketService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
     private readonly ConcurrentDictionary<WebSocket, object> _sockets = new();
-    private readonly ChatService _chatService;
     private readonly WebSocketNotifier _webSocketNotifier;
     private readonly IntentExtractionService _intentExtractionService;
     private readonly TravelPlanningService _travelPlanningService;
     private readonly ScoringService _scoringService;
     private readonly ConcurrentDictionary<WebSocket, TravelSession> _sessions = new();
-    public ChatWebSocketService(ChatService chatService, IntentExtractionService intentExtractionService, TravelPlanningService travelPlanningService, WebSocketNotifier webSocketNotifier, ScoringService scoringService)
+
+    private readonly SetupItineraryService _setupItineraryService;
+    public ChatWebSocketService(IntentExtractionService intentExtractionService, TravelPlanningService travelPlanningService, WebSocketNotifier webSocketNotifier, ScoringService scoringService, SetupItineraryService setupItineraryService)
     {
-        _chatService = chatService;
         _intentExtractionService = intentExtractionService;
         _travelPlanningService = travelPlanningService;
         _webSocketNotifier = webSocketNotifier;
         _scoringService = scoringService;
+        _setupItineraryService = setupItineraryService;
     }
     private TravelSession GetSession(WebSocket socket)
     {
@@ -214,6 +215,11 @@ public sealed class ChatWebSocketService
             if (session.Stage == TravelStage.Scoring)
             {
                 travelResponse = await _scoringService.ScorePlaces(travelResponse, session);
+            }
+
+            if (session.Stage == TravelStage.SetupItinerary)
+            {
+                travelResponse.itinerary = await _setupItineraryService.Setup(travelResponse, session);
             }
 
         }
