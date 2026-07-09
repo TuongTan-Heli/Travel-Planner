@@ -40,6 +40,13 @@ public static class MapVariables
         "places.servesWine," +
         "places.takeout";
 
+    public static string GoogleMapFieldMaskLocations =
+            "places.displayName," +
+            "places.formattedAddress," +
+            "places.location," +
+            "places.rating," +
+            "places.userRatingCount";
+            
     public static List<string> PrimaryTypes = [
         "tourist_attraction",
         "museum",

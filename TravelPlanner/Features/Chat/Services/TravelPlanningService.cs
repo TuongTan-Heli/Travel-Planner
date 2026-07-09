@@ -8,6 +8,7 @@ public sealed class TravelPlanningService
     private readonly WeatherService _weatherService;
     private readonly MapService _mapService;
     private readonly Utils _utils;
+    private static readonly Random Random = new();
 
     public TravelPlanningService(WeatherService weatherService, MapService mapService, Utils utils)
     {
@@ -23,6 +24,18 @@ public sealed class TravelPlanningService
             throw new AppException("INSUFFICIENT_DATA", "Destination and days are required for planning.");
         }
         Task<TravelTime> weatherTask;
+
+        var clusters = await _mapService.GetLocations(session.Context.Destination);
+
+        // Randomly select a subset of clusters based on the number of days
+        var count = Math.Min(
+        Math.Max(1, (int)Math.Ceiling(session.Context.Days ?? 1 / 3.5)),
+        clusters.Count);
+        clusters = clusters
+            .OrderBy(_ => Random.Next())
+            .Take(count)
+            .ToList();
+
         if (session.Context.StartDate.HasValue && session.Context.EndDate.HasValue
         && session.Context.StartDate <= new DateTime().AddDays(15))
         {

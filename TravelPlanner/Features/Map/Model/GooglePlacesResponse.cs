@@ -36,6 +36,7 @@ public class GooglePlace
     public string? InternationalPhoneNumber { get; set; }
 
     public string? WebsiteUri { get; set; }
+    
     public bool? DineIn { get; set; }
 
     public bool? AllowsDogs { get; set; }

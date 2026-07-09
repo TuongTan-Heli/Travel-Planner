@@ -11,6 +11,7 @@ public class MapService
     private readonly Utils _utils;
     private readonly string _path;
     private readonly string _searchNearbyUrl;
+    private readonly string _searchTextUrl;
     private const int maxAttemptCall = 5;
 
     public MapService(HttpClient httpClient, Utils utils)
@@ -18,6 +19,7 @@ public class MapService
         _httpClient = httpClient;
         _utils = utils;
         _searchNearbyUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_NEARBY_API_URL") ?? string.Empty;
+        _searchTextUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_TEXT_API_URL") ?? string.Empty;
         _path = Environment.GetEnvironmentVariable("GOOGLE_ACCESS_PATH") ?? string.Empty;
     }
 
@@ -442,4 +444,143 @@ public class MapService
             .Take(50)
             .ToList();
     }
+
+    private static List<Place> FilterInterestingPlaces(
+    IEnumerable<Place> places,
+    double keepPercentage = 0.8,
+    int minimumKeep = 15)
+    {
+        var ranked = places
+            .Select(p => new
+            {
+                Place = p,
+                Score = CalculateInterestScore(p)
+            })
+            .OrderByDescending(x => x.Score)
+            .ToList();
+
+        if (ranked.Count <= minimumKeep)
+        {
+            return ranked
+                .Select(x => x.Place)
+                .ToList();
+        }
+
+        var keep =
+            Math.Max(
+                minimumKeep,
+                (int)Math.Ceiling(ranked.Count * keepPercentage));
+
+        return ranked
+            .Take(keep)
+            .Select(x => x.Place)
+            .ToList();
+    }
+
+    private static double CalculateInterestScore(Place place)
+    {
+        const double AverageRating = 4.0;
+        const double MinimumVotes = 500;
+
+        double rating = place.Rating;
+        double votes = place.UserRatingCount;
+
+        // Bayesian weighted rating
+        double weightedRating =
+            (votes / (votes + MinimumVotes)) * rating +
+            (MinimumVotes / (votes + MinimumVotes)) * AverageRating;
+
+        // Logarithmic popularity bonus
+        double popularity =
+            Math.Log10(votes + 1);
+
+        // Final score
+        return weightedRating * popularity;
+    }
+
+    public async Task<List<PlaceCluster>> GetLocations(string location)
+    {
+        var token = await GetAccessTokenAsync();
+
+        var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                _searchTextUrl);
+
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                token);
+
+        request.Headers.Add(
+            "X-Goog-FieldMask",
+            MapVariables.GoogleMapFieldMaskLocations);
+
+        var body = new
+        {
+            textQuery = location + "Travel actractions"
+        };
+
+        request.Content = JsonContent.Create(body);
+
+        var response = await _httpClient.SendAsync(request);
+
+        var raw = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new AppException(
+                "MAP_API_ERROR",
+                $"Google Places failed {(int)response.StatusCode}: {raw}");
+        }
+
+        var result =
+            JsonSerializer.Deserialize<GooglePlacesResponse>(
+                raw,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+        var mappedResult = result?.Places == null
+            ? []
+            : MapResponse(result.Places);
+
+        var prioritizedPlaces = FilterInterestingPlaces(mappedResult);
+
+        #region choose city
+        var clusters = new List<PlaceCluster>();
+
+        foreach (var place in prioritizedPlaces)
+        {
+            var cluster = clusters.FirstOrDefault(c =>
+                c.Places.Any(p =>
+                    _utils.Haversine(
+                        p.Location,
+                        place.Location) <= 100)); // 50 km
+
+            if (cluster == null)
+            {
+                clusters.Add(new PlaceCluster
+                {
+                    Center = place.Location,
+                    Places = [place],
+                    RepresentativePlace = place
+                });
+            }
+            else
+            {
+                cluster.Places.Add(place);
+
+                cluster.Center = new Altitude
+                {
+                    Latitude = cluster.Places.Average(x => x.Location.Latitude),
+                    Longitude = cluster.Places.Average(x => x.Location.Longitude)
+                };
+            }
+        }
+
+        #endregion
+        return clusters.ToList();
+    }
+
+
 }

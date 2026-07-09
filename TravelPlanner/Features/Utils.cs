@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.VisualBasic;
 
 namespace TravelPlanner;
 
@@ -91,12 +92,31 @@ public class Utils
 
     private const double EarthRadiusKm = 6371.0;
 
-    public double Haversine(
-        double lat1,
-        double lon1,
-        double lat2,
-        double lon2)
+    public double Haversine(double lat1, double lon1, double lat2, double lon2)
     {
+        double dLat = DegreesToRadians(lat2 - lat1);
+        double dLon = DegreesToRadians(lon2 - lon1);
+
+        lat1 = DegreesToRadians(lat1);
+        lat2 = DegreesToRadians(lat2);
+
+        double a =
+            Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+            Math.Cos(lat1) * Math.Cos(lat2) *
+            Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+        double c = 2 * Math.Asin(Math.Sqrt(a));
+
+        return EarthRadiusKm * c;
+    }
+
+    public double Haversine(Altitude altitude1, Altitude altitude2)
+    {
+        var lat1 = altitude1.Latitude;
+        var lon1 = altitude1.Longitude;
+        var lat2 = altitude2.Latitude;
+        var lon2 = altitude2.Longitude;
+        
         double dLat = DegreesToRadians(lat2 - lat1);
         double dLon = DegreesToRadians(lon2 - lon1);
 

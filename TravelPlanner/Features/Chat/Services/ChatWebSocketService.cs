@@ -212,15 +212,15 @@ public sealed class ChatWebSocketService
                 
             }
 
-            if (session.Stage == TravelStage.Scoring)
-            {
-                travelResponse = await _scoringService.ScorePlaces(travelResponse, session);
-            }
+            // if (session.Stage == TravelStage.Scoring)
+            // {
+            //     travelResponse = await _scoringService.ScorePlaces(travelResponse, session);
+            // }
 
-            if (session.Stage == TravelStage.SetupItinerary)
-            {
-                travelResponse.itinerary = await _setupItineraryService.Setup(travelResponse, session);
-            }
+            // if (session.Stage == TravelStage.SetupItinerary)
+            // {
+            //     travelResponse.itinerary = await _setupItineraryService.Setup(travelResponse, session);
+            // }
 
         }
         catch (AppException ex)
