@@ -498,7 +498,7 @@ public class MapService
         return weightedRating * popularity;
     }
 
-    public async Task<List<PlaceCluster>> GetLocations(string location)
+    public async Task<List<PlaceCluster>> GetLocations(string location, int days)
     {
         var token = await GetAccessTokenAsync();
 
@@ -578,8 +578,16 @@ public class MapService
             }
         }
 
+        // Randomly select a subset of clusters based on the number of days
+        var count = Math.Min(
+        Math.Max(1, (int)Math.Ceiling(days / 3.5)),
+        clusters.Count);
+
         #endregion
-        return clusters.ToList();
+        return clusters
+            .OrderBy(_ => Random.Next())
+            .Take(count)
+            .ToList();
     }
 
 

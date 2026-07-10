@@ -24,7 +24,7 @@ public sealed class ScoringService
 
             foreach (var place in response.TripPlanningData.RecommendedPlaces)
             {
-                place.Score = await ScorePlace(place, session, weights, response.TripPlanningData.Altitude);
+                place.Score = await ScorePlace(place, session, weights);
             }
 
             response.TripPlanningData.RecommendedPlaces =
@@ -46,8 +46,7 @@ public sealed class ScoringService
     private async Task<PlaceScore> ScorePlace(
     Place place,
     TravelSession session,
-    ScoreWeights weights,
-    Altitude altitude)
+    ScoreWeights weights)
     {
         var result = new PlaceScore();
 
@@ -69,11 +68,11 @@ public sealed class ScoringService
             ScoreInterest(place, session),
             weights.Interest);
 
-        AddScore(
-            result,
-            "Route",
-            ScoreRoute(place, altitude),
-            weights.Route);
+        // AddScore(
+        //     result,
+        //     "Route",
+        //     ScoreRoute(place, altitude),
+        //     weights.Route);
 
         return result;
         //Adjust weigth, score range

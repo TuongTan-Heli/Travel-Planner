@@ -10,48 +10,37 @@ public class WeatherService
         _utils = utils;
     }
     public async Task<TravelTime> GetRecommendedTimeAsync(
-    string location,
-    int? days)
+    List<PlaceCluster> clusters,
+    TravelPromptContext context)
     {
         var endDate = DateTime.UtcNow.Date;
         var startDate = endDate.AddYears(-3);
-
-        var (lat, lon) =
-            await _utils.GetCoordinatesAsync(location);
-
-        var url =
-            $"https://archive-api.open-meteo.com/v1/archive" +
-            $"?latitude={lat}" +
-            $"&longitude={lon}" +
-            $"&start_date={startDate:yyyy-MM-dd}" +
-            $"&end_date={endDate:yyyy-MM-dd}" +
-            $"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum" +
-            $"&timezone=auto";
-
-        var response =
-            await _httpClient.GetFromJsonAsync<HistoricalWeatherResponse>(url);
-
-        if (response == null)
+        var tasks = clusters.Select(async cluster =>
         {
-            throw new AppException(
-                "WEATHER_API_ERROR",
-                "Failed to retrieve historical weather.");
-        }
+            var historical =
+                await GetHistoricalWeatherAsync(
+                    cluster,
+                    startDate,
+                    endDate);
 
-        var weatherDays =
-            BuildHistoricalDays(response);
+            return FindBestTravelWindow(
+                cluster.RepresentativePlace.Name,
+                BuildHistoricalDays(historical),
+                context.Days ?? 1);
+        });
 
-        return FindBestTravelWindow(
-            location,
-            weatherDays,
-            days ?? 7);
+        var bestTimes = await Task.WhenAll(tasks);
+        return MergeTravelWindows(
+            bestTimes,
+            context);
     }
 
     public async Task<TravelTime> GetWeatherAsync(
-    string location,
-    DateTime? startDate,
-    DateTime? endDate)
+    List<PlaceCluster> clusters,
+    TravelPromptContext context)
     {
+        var startDate = context.StartDate;
+        var endDate = context.EndDate;
         if (!startDate.HasValue || !endDate.HasValue)
         {
             throw new AppException(
@@ -59,39 +48,35 @@ public class WeatherService
                 "StartDate and EndDate are required.");
         }
 
-        if (endDate > new DateTime().AddDays(15))
+        var maxDate = DateTime.UtcNow.Date.AddDays(15);
+
+        if (endDate > maxDate)
         {
-            endDate = new DateTime().AddDays(15);
+            endDate = maxDate;
         }
 
-        var (lat, lon) =
-            await _utils.GetCoordinatesAsync(location);
+        var weatherTasks = clusters.Select(cluster => GetForecastAsync(
+        cluster,
+        startDate.Value,
+        endDate.Value));
 
-        var url =
-            $"https://api.open-meteo.com/v1/forecast" +
-            $"?latitude={lat}" +
-            $"&longitude={lon}" +
-            $"&hourly=precipitation_probability" +
-            $"&daily=weather_code,temperature_2m_min,temperature_2m_max,uv_index_max,precipitation_probability_max" +
-            $"&start_date={startDate.Value:yyyy-MM-dd}" +
-            $"&end_date={endDate.Value:yyyy-MM-dd}";
+        var responses = await Task.WhenAll(weatherTasks);
 
-        var forecast =
-            await _httpClient.GetFromJsonAsync<ForecastResponse>(url);
+        var forecasts = responses
+            .Where(x => x != null)
+            .Select((response, index) => new LocationForecast
+            {
+                Location = clusters[index].RepresentativePlace.Name,
 
-        if (forecast == null)
-        {
-            throw new AppException(
-                "WEATHER_API_ERROR",
-                "Failed to retrieve forecast.");
-        }
+                Days = BuildForecasts(response!)
+            })
+            .ToList();
 
         return new TravelTime
         {
-            Location = location,
             StartTime = startDate.Value,
             EndTime = endDate.Value,
-            WeatherForecasts = BuildForecasts(forecast)
+            Forecasts = forecasts
         };
     }
 
@@ -100,56 +85,44 @@ public class WeatherService
     List<WeatherDay> historicalDays,
     int days)
     {
-        var weeklyClimate =
-        historicalDays
-        .GroupBy(x => new
-        {
-            x.Date.Year,
-            Week = GetWeekOfYear(x.Date)
-        })
-        .Select(g => new
-        {
-            AvgMaxTemp = g.Average(x => x.MaxTemp),
-            AvgMinTemp = g.Average(x => x.MinTemp),
-            AvgRainfall = g.Average(x => x.Rainfall),
-            g.Key.Year,
-            g.Key.Week,
-            AvgScore = g.Average(x => x.Score),
-            RepresentativeDate = g.First().Date
-        })
-        .OrderByDescending(x => x.AvgScore)
-        .ToList();
+        var bestClimate = historicalDays
+            .GroupBy(x =>
+            (
+                Month: x.Date.Month,
+                Week: (x.Date.Day - 1) / 7 + 1
+            ))
+            .Select(g => new
+            {
+                g.Key.Month,
+                g.Key.Week,
 
-        var best = weeklyClimate.First();
+                AvgMaxTemp = g.Average(x => x.MaxTemp),
+                AvgMinTemp = g.Average(x => x.MinTemp),
+                AvgRainfall = g.Average(x => x.Rainfall),
 
-        var nextYear = DateTime.UtcNow.Year + 1;
+                AvgScore = g.Average(x => x.Score)
+            })
+            .OrderByDescending(x => x.AvgScore)
+            .First();
 
-        var today = DateTime.UtcNow.Date;
 
-        var (start, end) = _utils.GetNextBestTravelWindow(
-        best.Week,
-        days,
-        DateTime.UtcNow);
+        var (start, end) =
+            _utils.GetNextBestTravelWindow(
+                bestClimate.Month,
+                bestClimate.Week,
+                days,
+                DateTime.UtcNow);
+
 
         return new TravelTime
         {
             Location = location,
             StartTime = start,
             EndTime = end,
-            WeatherForecasts =
-            [
-                new WeatherDay
-            {
-                Date = start,
-                MaxTemp = best.AvgMaxTemp,
-                MinTemp = best.AvgMinTemp,
-                Rainfall = best.AvgRainfall,
-                WeatherCode = 0,
-                Score = (int)Math.Round(best.AvgScore)
-            }
-            ]
+            WeatherScore = bestClimate.AvgScore
         };
     }
+
     private static List<WeatherDay> BuildForecasts(ForecastResponse forecast)
     {
         var result = new List<WeatherDay>();
@@ -177,6 +150,119 @@ public class WeatherService
         return result;
     }
 
+    private async Task<HistoricalWeatherResponse> GetHistoricalWeatherAsync(
+     PlaceCluster cluster,
+     DateTime start,
+     DateTime end)
+    {
+        var url =
+            $"https://archive-api.open-meteo.com/v1/archive" +
+            $"?latitude={cluster.Center.Latitude}" +
+            $"&longitude={cluster.Center.Longitude}" +
+            $"&start_date={start:yyyy-MM-dd}" +
+            $"&end_date={end:yyyy-MM-dd}" +
+            $"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum" +
+            $"&timezone=auto";
+
+        return await _httpClient.GetFromJsonAsync<HistoricalWeatherResponse>(url)
+            ?? throw new AppException(
+                "WEATHER_API_ERROR",
+                $"Failed to retrieve historical weather for {cluster.RepresentativePlace.Name}");
+    }
+    private bool CanForecast(DateTime start, DateTime end)
+    {
+        var today = DateTime.UtcNow.Date;
+
+        return start >= today &&
+               end <= today.AddDays(15);
+    }
+    private async Task<ForecastResponse?> GetForecastAsync(
+    PlaceCluster cluster,
+    DateTime start,
+    DateTime end)
+    {
+        var today = DateTime.UtcNow.Date;
+
+        if (!CanForecast(start, end))
+        {
+            return null;
+        }
+        var url =
+            $"https://api.open-meteo.com/v1/forecast" +
+            $"?latitude={cluster.Center.Latitude}" +
+            $"&longitude={cluster.Center.Longitude}" +
+            $"&hourly=precipitation_probability" +
+            $"&daily=weather_code,temperature_2m_min,temperature_2m_max,uv_index_max,precipitation_probability_max" +
+            $"&start_date={start:yyyy-MM-dd}" +
+            $"&end_date={end:yyyy-MM-dd}";
+
+        return await _httpClient.GetFromJsonAsync<ForecastResponse>(url)
+            ?? throw new AppException(
+                "WEATHER_API_ERROR",
+                $"Failed to retrieve forecast for {cluster.RepresentativePlace.Name}");
+    }
+
+    private TravelTime MergeTravelWindows(
+    IEnumerable<TravelTime> bestTimes,
+    TravelPromptContext context)
+    {
+        var dateScores = new Dictionary<DateTime, double>();
+        foreach (var time in bestTimes)
+        {
+            for (
+                var date = time.StartTime;
+                date <= time.EndTime;
+                date = date.AddDays(1))
+            {
+                if (!dateScores.ContainsKey(date))
+                    dateScores[date] = 0;
+
+                dateScores[date] += time.WeatherScore;
+            }
+        }
+
+        var tripDays = context.Days ?? 1;
+        DateTime bestStart = DateTime.MinValue;
+        double bestScore = -1;
+
+        foreach (var start in dateScores.Keys)
+        {
+            double score = 0;
+
+            for (int i = 0; i < tripDays; i++)
+            {
+                var day = start.AddDays(i);
+                if (dateScores.TryGetValue(day, out var value))
+                    score += value;
+            }
+
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestStart = start;
+            }
+        }
+
+
+        return new TravelTime
+        {
+            Location = context.Destination ?? "",
+            StartTime = bestStart,
+            EndTime = bestStart.AddDays(tripDays - 1),
+            WeatherScore = bestScore
+        };
+    }
+    private static int GetWeekOfYear(DateTime date)
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+        return culture.Calendar.GetWeekOfYear(
+            date,
+            System.Globalization.CalendarWeekRule.FirstDay,
+            DayOfWeek.Monday);
+    }
+
     private static List<WeatherDay> BuildHistoricalDays(HistoricalWeatherResponse response)
     {
         var result = new List<WeatherDay>();
@@ -201,16 +287,6 @@ public class WeatherService
         }
 
         return result;
-    }
-
-    private static int GetWeekOfYear(DateTime date)
-    {
-        var culture = System.Globalization.CultureInfo.InvariantCulture;
-
-        return culture.Calendar.GetWeekOfYear(
-            date,
-            System.Globalization.CalendarWeekRule.FirstDay,
-            DayOfWeek.Monday);
     }
 
     private static int CalculateScore(

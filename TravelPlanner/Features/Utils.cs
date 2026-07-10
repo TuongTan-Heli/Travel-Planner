@@ -25,37 +25,34 @@ public class Utils
             : null;
     }
     public (DateTime Start, DateTime End) GetNextBestTravelWindow(
-        int bestWeek,
-        int days,
-        DateTime? fromDate = null)
+    int month,
+    int week,
+    int days,
+    DateTime now)
     {
-        var today = (fromDate ?? DateTime.UtcNow).Date;
+        var year = now.Year;
 
-        var years = new[]
+
+        var firstDay =
+            new DateTime(year, month, 1);
+
+
+        var start =
+            firstDay.AddDays((week - 1) * 7);
+
+
+        // if already passed, use next year
+        if (start < now.Date)
         {
-            today.Year,
-            today.Year + 1,
-            today.Year + 2
-        };
-
-        var candidates = new List<DateTime>();
-
-        foreach (var year in years)
-        {
-            var date = GetDateFromWeekOfYear(year, bestWeek);
-
-            if (date >= today)
-                candidates.Add(date);
+            start =
+                new DateTime(year + 1, month, 1)
+                .AddDays((week - 1) * 7);
         }
 
-        if (!candidates.Any())
-            throw new InvalidOperationException("No valid travel window found.");
 
-        var start = candidates
-            .OrderBy(x => x)
-            .First();
+        var end =
+            start.AddDays(days - 1);
 
-        var end = start.AddDays(days - 1);
 
         return (start, end);
     }
@@ -116,7 +113,7 @@ public class Utils
         var lon1 = altitude1.Longitude;
         var lat2 = altitude2.Latitude;
         var lon2 = altitude2.Longitude;
-        
+
         double dLat = DegreesToRadians(lat2 - lat1);
         double dLon = DegreesToRadians(lon2 - lon1);
 

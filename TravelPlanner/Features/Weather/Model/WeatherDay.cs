@@ -1,5 +1,6 @@
 public class WeatherDay
 {
+    public Place Place { get; set; } = new();
     public DateTime Date { get; init; }
 
     public double MaxTemp { get; init; }

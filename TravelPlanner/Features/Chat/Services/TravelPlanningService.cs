@@ -25,49 +25,39 @@ public sealed class TravelPlanningService
         }
         Task<TravelTime> weatherTask;
 
-        var clusters = await _mapService.GetLocations(session.Context.Destination);
+        var clusters = await _mapService.GetLocations(session.Context.Destination, session.Context.Days ?? 1);
 
-        // Randomly select a subset of clusters based on the number of days
-        var count = Math.Min(
-        Math.Max(1, (int)Math.Ceiling(session.Context.Days ?? 1 / 3.5)),
-        clusters.Count);
-        clusters = clusters
-            .OrderBy(_ => Random.Next())
-            .Take(count)
-            .ToList();
-
-        if (session.Context.StartDate.HasValue && session.Context.EndDate.HasValue
-        && session.Context.StartDate <= new DateTime().AddDays(15))
+        if (session.Context.StartDate.HasValue && 
+            session.Context.EndDate.HasValue)
         {
             weatherTask = _weatherService.GetWeatherAsync(
-                session.Context.Destination,
-                session.Context.StartDate,
-                session.Context.EndDate);
+                clusters,
+                session.Context);
         }
         else
         {
             weatherTask = _weatherService.GetRecommendedTimeAsync(
-                session.Context.Destination,
-                session.Context.Days);
+                clusters,
+                session.Context);
         }
 
         var placesTask = _mapService.GetMapDataAsync(session.Context);
 
-        var (lat, lon) = await _utils.GetCoordinatesAsync(
-                            session.Context.Destination ?? "");
+        // var (lat, lon) = await _utils.GetCoordinatesAsync(
+        //                     session.Context.Destination ?? "");
 
-        await Task.WhenAll(weatherTask, placesTask);
+        await Task.WhenAll(weatherTask, placesTask); //wrong year in weather task
 
         session.Stage = TravelStage.Scoring;
         return new TripPlanningData
         {
             TravelTime = weatherTask.Result,
             RecommendedPlaces = placesTask.Result,
-            Altitude = new Altitude
-            {
-                Latitude = lat,
-                Longitude = lon
-            }
+            // Altitude = new Altitude
+            // {
+            //     Latitude = lat,
+            //     Longitude = lon
+            // }
         };
     }
 }
