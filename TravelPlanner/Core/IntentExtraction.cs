@@ -62,6 +62,9 @@ public sealed class IntentExtractionService
         if (!string.IsNullOrWhiteSpace(result.Destination))
             ctx.Destination = result.Destination;
 
+        if (!string.IsNullOrWhiteSpace(result.Country))
+            ctx.Country = result.Country;
+
         if (result.Days.HasValue)
             ctx.Days = result.Days;
 

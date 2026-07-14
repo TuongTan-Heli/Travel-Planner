@@ -9,6 +9,8 @@ public class Place
 
     public Altitude Location { get; set; } = new();
 
+    public string Country { get; set; } = string.Empty;
+
     public List<string> Photos { get; set; } = [];
 
     public string PrimaryType { get; init; } = string.Empty;
@@ -77,7 +79,7 @@ public class Place
 
     public bool? Takeout { get; init; }
 
-    public PlaceScore Score {get; set;} = new();
+    public PlaceScore Score { get; set; } = new();
 }
 public enum PlaceCategory
 {

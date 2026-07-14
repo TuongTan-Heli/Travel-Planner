@@ -38,14 +38,16 @@ public static class MapVariables
         "places.servesLunch," +
         "places.servesVegetarianFood," +
         "places.servesWine," +
-        "places.takeout";
+        "places.takeout," + 
+        "places.addressComponents";
 
     public static string GoogleMapFieldMaskLocations =
             "places.displayName," +
             "places.formattedAddress," +
             "places.location," +
             "places.rating," +
-            "places.userRatingCount";
+            "places.userRatingCount," +
+            "places.addressComponents";
             
     public static List<string> PrimaryTypes = [
         "tourist_attraction",

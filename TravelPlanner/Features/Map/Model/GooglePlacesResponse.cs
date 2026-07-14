@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Primitives;
+
 namespace TravelPlanner.Features.Map.Model;
 
 public class GooglePlacesResponse
@@ -10,6 +12,8 @@ public class GooglePlace
     public DisplayName DisplayName { get; set; } = new();
 
     public string? FormattedAddress { get; set; }
+
+    public List<AddressComponent> AddressComponents { get; set; } = new();
 
     public Altitude Location { get; set; } = new();
 
@@ -36,7 +40,7 @@ public class GooglePlace
     public string? InternationalPhoneNumber { get; set; }
 
     public string? WebsiteUri { get; set; }
-    
+
     public bool? DineIn { get; set; }
 
     public bool? AllowsDogs { get; set; }
@@ -159,4 +163,12 @@ public class PaymentOptions
     public bool AcceptsCashOnly { get; set; }
     public bool? AcceptsNfc { get; set; }
 
+}
+
+public class AddressComponent
+{
+    public string LongText { get; set; } = string.Empty;
+    public string ShortText { get; set; } = string.Empty;
+    public string LanguageCode { get; set; } = string.Empty;
+    public List<string> Types { get; set; } = new();
 }

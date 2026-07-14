@@ -130,12 +130,9 @@ public sealed class ScoringService
 
         decimal priceLevel = (decimal)ScorePriceLevel(place, session);
 
-        // decimal confidence = (decimal)ScorePriceConfidence(place);
-
         decimal score =
             budgetFit * 0.5m +
             priceLevel * 0.3m;
-        // confidence * 0.2m;
 
         return (double)score;
     }
@@ -245,15 +242,6 @@ public sealed class ScoringService
             _ => 1.00
         };
     }
-
-    // private double ScorePriceConfidence(
-    // Place place)
-    // {
-    //     return place.PriceRange != null
-    //         ? 1.0
-    //         : 0.8;
-    // }
-
 
     private double ScoreInterest(
     Place place,

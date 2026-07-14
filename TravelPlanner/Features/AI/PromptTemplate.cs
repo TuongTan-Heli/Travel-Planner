@@ -24,6 +24,7 @@ public class PromptTemplate
             "isTravelRelated": true,
             "isReadyForPlanning": false,
             "destination": null,
+            "country": null,
             "startDate": null,
             "endDate": null,
             "days": null,
@@ -60,7 +61,9 @@ public class PromptTemplate
             - budget.currencyCode must be a valid ISO-4217 currency code (USD, AUD, EUR, VND, JPY, GBP, etc.).
             - If the user does not specify a currency, use "USD".
             - If the budget is unknown, return: "budget": null
+            - Can auto-generate country if user provide destination
             Required planning fields:
+            - country 
             - destination
             - travel dates OR trip duration
             - budget

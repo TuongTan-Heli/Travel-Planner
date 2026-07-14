@@ -38,55 +38,51 @@ public class MapService
             .GetAccessTokenForRequestAsync();
     }
 
-    public async Task<List<Place>> GetMapDataAsync(TravelPromptContext context)
+    public async Task<List<Place>> GetMapDataAsync(List<PlaceCluster> clusters, TravelPromptContext context)
     {
         int AttemptCall = 0;
         int consecutiveDuplicateCalls = 0;
         try
         {
             List<Place> places = new List<Place>();
-            var (lat, lon) =
-                await _utils.GetCoordinatesAsync(
-                    context.Destination ?? "");
+            var token = await GetAccessTokenAsync();
 
-            var token =
-                await GetAccessTokenAsync();
+            foreach (var cluster in clusters)
+            {
+                var (lat, lon) = (cluster.Center.Latitude, cluster.Center.Longitude);
+                #region call 1 core city call
+                var coreCall = await GetPlacesAsync(
+                            lat,
+                            lon,
+                            token,
+                            10000,
+                            MapVariables.PrimaryTypes,
+                            BuildInterests(context.Interests)
+                            );
+                places.AddRange(coreCall
+                                .GroupBy(x => x.Name)
+                                .Select(x => x.First())
+                                .ToList());
+                //update thinking message with thinkingId
+                AttemptCall++;
+                #endregion
+            }
 
-            #region call 1 core city call
-            var coreCall = await GetPlacesAsync(
-                        lat,
-                        lon,
-                        token,
-                        10000,
-                        MapVariables.PrimaryTypes,
-                        BuildInterests(context.Interests)
-                        );
-            places.AddRange(coreCall
-                            .GroupBy(x => x.Name)
-                            .Select(x => x.First())
-                            .ToList());
-            //update thinking meessage with thinkingId
-            AttemptCall++;
-            #endregion
             while (AttemptCall < maxAttemptCall)
             {
-                var missingInterests =
-                    GetMissingInterests(places, context.Interests);
+                var missingInterests = GetMissingInterests(places, context.Interests);
+                var missingTypes = GetMissingPrimaryTypes(places, context);
+                var interestCoverage = GetInterestCoverage(places, context.Interests);
 
-                var missingTypes =
-                    GetMissingPrimaryTypes(places, context);
-                var interestCoverage = GetInterestCoverage(
-                    places,
-                    context.Interests);
-
-                if (interestCoverage >= 0.7 &&
-                    !missingTypes.Any() &&
-                    places.Count >= context.Days * 4)
+                if (interestCoverage >= 0.7 && !missingTypes.Any() && places.Count >= context.Days * 4)
                 {
                     break;
                 }
-
                 var before = places.Count;
+                // foreach (var cluster in clusters)
+                // {
+                var randomCluster = clusters[Random.Next(0, clusters.Count - 1)];
+                var (lat, lon) = (randomCluster.Center.Latitude, randomCluster.Center.Longitude);
                 var (newLat, newLon) = GetRandomCenter(lat, lon, Random.Next(2, 11) * 1000);
                 var results = await GetPlacesAsync(
                     newLat,
@@ -114,6 +110,7 @@ public class MapService
 
                 AttemptCall++;
             }
+            // }
             return places;
         }
         catch (AppException ex)
@@ -222,19 +219,11 @@ public class MapService
     List<string> primaryTypes,
     List<string>? types = null)
     {
-        var request =
-            new HttpRequestMessage(
-                HttpMethod.Post,
-                _searchNearbyUrl);
+        var request = new HttpRequestMessage(HttpMethod.Post, _searchNearbyUrl);
 
-        request.Headers.Authorization =
-            new AuthenticationHeaderValue(
-                "Bearer",
-                token);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        request.Headers.Add(
-            "X-Goog-FieldMask",
-            MapVariables.GoogleMapFieldMask);
+        request.Headers.Add("X-Goog-FieldMask", MapVariables.GoogleMapFieldMask);
 
         var body = new
         {
@@ -256,14 +245,11 @@ public class MapService
             }
         };
 
-        request.Content =
-            JsonContent.Create(body);
+        request.Content = JsonContent.Create(body);
 
-        var response =
-            await _httpClient.SendAsync(request);
+        var response = await _httpClient.SendAsync(request);
 
-        var raw =
-            await response.Content.ReadAsStringAsync();
+        var raw = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
         {
@@ -272,17 +258,14 @@ public class MapService
                 $"Google Places failed {(int)response.StatusCode}: {raw}");
         }
 
-        var result =
-            JsonSerializer.Deserialize<GooglePlacesResponse>(
+        var result = JsonSerializer.Deserialize<GooglePlacesResponse>(
                 raw,
                 new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 });
 
-        return result?.Places == null
-            ? []
-            : MapResponse(result.Places);
+        return result?.Places == null ? [] : MapResponse(result.Places);
     }
 
     private List<string> GetMissingInterests(List<Place> places, List<string> interests)
@@ -312,6 +295,7 @@ public class MapService
             Name = p.DisplayName?.Text ?? "",
             Address = p.FormattedAddress ?? "",
             Location = p.Location,
+            Country = p.AddressComponents.FirstOrDefault(x => x.Types.Contains("country"))?.LongText ?? "",
             Photos = p.Photos?
                     .Select(x => x.Name)
                     .ToList()
@@ -446,11 +430,13 @@ public class MapService
     }
 
     private static List<Place> FilterInterestingPlaces(
+    string country,
     IEnumerable<Place> places,
     double keepPercentage = 0.8,
     int minimumKeep = 15)
     {
         var ranked = places
+            .Where(x => x.Address.Contains(country) || x.Country.Contains(country))
             .Select(p => new
             {
                 Place = p,
@@ -487,8 +473,8 @@ public class MapService
 
         // Bayesian weighted rating
         double weightedRating =
-            (votes / (votes + MinimumVotes)) * rating +
-            (MinimumVotes / (votes + MinimumVotes)) * AverageRating;
+            votes / (votes + MinimumVotes) * rating +
+            MinimumVotes / (votes + MinimumVotes) * AverageRating;
 
         // Logarithmic popularity bonus
         double popularity =
@@ -498,25 +484,19 @@ public class MapService
         return weightedRating * popularity;
     }
 
-    public async Task<List<PlaceCluster>> GetLocations(string location, int days)
+    public async Task<List<PlaceCluster>> GetLocations(string country, string location, int days)
     {
         var token = await GetAccessTokenAsync();
 
-        var request = new HttpRequestMessage(
-                HttpMethod.Post,
-                _searchTextUrl);
+        var request = new HttpRequestMessage(HttpMethod.Post, _searchTextUrl);
 
-        request.Headers.Authorization = new AuthenticationHeaderValue(
-                "Bearer",
-                token);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        request.Headers.Add(
-            "X-Goog-FieldMask",
-            MapVariables.GoogleMapFieldMaskLocations);
+        request.Headers.Add("X-Goog-FieldMask", MapVariables.GoogleMapFieldMaskLocations);
 
         var body = new
         {
-            textQuery = location + "Travel actractions"
+            textQuery = location + "Travel actractions in " + country
         };
 
         request.Content = JsonContent.Create(body);
@@ -544,7 +524,7 @@ public class MapService
             ? []
             : MapResponse(result.Places);
 
-        var prioritizedPlaces = FilterInterestingPlaces(mappedResult);
+        var prioritizedPlaces = FilterInterestingPlaces(country, mappedResult);
 
         #region choose city
         var clusters = new List<PlaceCluster>();
