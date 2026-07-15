@@ -1,6 +1,6 @@
 public class TravelTime
 {
-    public string Location { get; init; } = string.Empty;
+    // public PlaceCluster Location { get; init; } = new();
 
     public DateTime StartTime { get; init; }
 
@@ -14,7 +14,7 @@ public class TravelTime
 
 public class LocationForecast
 {
-    public string Location { get; init; } = string.Empty;
+    public Altitude Location { get; init; } = new();
 
     public List<WeatherDay> Days { get; init; } = [];
 }

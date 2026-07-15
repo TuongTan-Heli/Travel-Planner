@@ -80,6 +80,8 @@ public class Place
     public bool? Takeout { get; init; }
 
     public PlaceScore Score { get; set; } = new();
+
+    public PlaceCluster? PlaceCluster { get; set; } = new();
 }
 public enum PlaceCategory
 {

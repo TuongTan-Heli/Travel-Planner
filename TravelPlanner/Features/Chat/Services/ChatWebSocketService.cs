@@ -209,7 +209,6 @@ public sealed class ChatWebSocketService
             if (session.Stage == TravelStage.LocationSelection)
             {
                 travelResponse.TripPlanningData = await _travelPlanningService.BuildPlanningDataAsync(session);
-                
             }
 
             if (session.Stage == TravelStage.Scoring)

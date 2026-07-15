@@ -52,6 +52,7 @@ public class MapService
                 var (lat, lon) = (cluster.Center.Latitude, cluster.Center.Longitude);
                 #region call 1 core city call
                 var coreCall = await GetPlacesAsync(
+                            cluster,
                             lat,
                             lon,
                             token,
@@ -85,6 +86,7 @@ public class MapService
                 var (lat, lon) = (randomCluster.Center.Latitude, randomCluster.Center.Longitude);
                 var (newLat, newLon) = GetRandomCenter(lat, lon, Random.Next(2, 11) * 1000);
                 var results = await GetPlacesAsync(
+                    randomCluster,
                     newLat,
                     newLon,
                     token,
@@ -212,6 +214,7 @@ public class MapService
         );
     }
     private async Task<List<Place>> GetPlacesAsync(
+    PlaceCluster cluster,
     double lat,
     double lon,
     string token,
@@ -265,7 +268,7 @@ public class MapService
                     PropertyNameCaseInsensitive = true
                 });
 
-        return result?.Places == null ? [] : MapResponse(result.Places);
+        return result?.Places == null ? [] : MapResponse(result.Places, cluster);
     }
 
     private List<string> GetMissingInterests(List<Place> places, List<string> interests)
@@ -288,7 +291,7 @@ public class MapService
         return missingInterests;
     }
 
-    private static List<Place> MapResponse(List<GooglePlace> places)
+    private static List<Place> MapResponse(List<GooglePlace> places, PlaceCluster? cluster)
     {
         return places.Select(p => new Place
         {
@@ -353,7 +356,8 @@ public class MapService
             ServesLunch = p.ServesLunch,
             ServesVegetarianFood = p.ServesVegetarianFood,
             ServesWine = p.ServesWine,
-            Takeout = p.Takeout
+            Takeout = p.Takeout,
+            PlaceCluster = cluster
         }).ToList();
     }
 
@@ -512,17 +516,14 @@ public class MapService
                 $"Google Places failed {(int)response.StatusCode}: {raw}");
         }
 
-        var result =
-            JsonSerializer.Deserialize<GooglePlacesResponse>(
+        var result = JsonSerializer.Deserialize<GooglePlacesResponse>(
                 raw,
                 new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 });
 
-        var mappedResult = result?.Places == null
-            ? []
-            : MapResponse(result.Places);
+        var mappedResult = result?.Places == null ? [] : MapResponse(result.Places, null);
 
         var prioritizedPlaces = FilterInterestingPlaces(country, mappedResult);
 
@@ -532,10 +533,8 @@ public class MapService
         foreach (var place in prioritizedPlaces)
         {
             var cluster = clusters.FirstOrDefault(c =>
-                c.Places.Any(p =>
-                    _utils.Haversine(
-                        p.Location,
-                        place.Location) <= 100)); // 50 km
+                c.Places.Any(p => 
+                _utils.Haversine(p.Location, place.Location) <= 100)); // 50 km
 
             if (cluster == null)
             {
@@ -543,7 +542,6 @@ public class MapService
                 {
                     Center = place.Location,
                     Places = [place],
-                    RepresentativePlace = place
                 });
             }
             else

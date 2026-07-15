@@ -17,16 +17,9 @@ public class WeatherService
         var startDate = endDate.AddYears(-3);
         var tasks = clusters.Select(async cluster =>
         {
-            var historical =
-                await GetHistoricalWeatherAsync(
-                    cluster,
-                    startDate,
-                    endDate);
+            var historical = await GetHistoricalWeatherAsync(cluster, startDate, endDate);
 
-            return FindBestTravelWindow(
-                cluster.RepresentativePlace.Name,
-                BuildHistoricalDays(historical),
-                context.Days ?? 1);
+            return FindBestTravelWindow(cluster, BuildHistoricalDays(historical), context.Days ?? 1);
         });
 
         var bestTimes = await Task.WhenAll(tasks);
@@ -66,7 +59,7 @@ public class WeatherService
             .Where(x => x != null)
             .Select((response, index) => new LocationForecast
             {
-                Location = clusters[index].RepresentativePlace.Name,
+                Location = clusters[index].Center,
 
                 Days = BuildForecasts(response!)
             })
@@ -81,7 +74,7 @@ public class WeatherService
     }
 
     private TravelTime FindBestTravelWindow(
-    string location,
+    PlaceCluster cluster,
     List<WeatherDay> historicalDays,
     int days)
     {
@@ -116,7 +109,7 @@ public class WeatherService
 
         return new TravelTime
         {
-            Location = location,
+            // Location = cluster,
             StartTime = start,
             EndTime = end,
             WeatherScore = bestClimate.AvgScore
@@ -167,7 +160,7 @@ public class WeatherService
         return await _httpClient.GetFromJsonAsync<HistoricalWeatherResponse>(url)
             ?? throw new AppException(
                 "WEATHER_API_ERROR",
-                $"Failed to retrieve historical weather for {cluster.RepresentativePlace.Name}");
+                $"Failed to retrieve historical weather for the following location, long: {cluster.Center.Longitude} , lat: {cluster.Center.Latitude}");
     }
     private bool CanForecast(DateTime start, DateTime end)
     {
@@ -181,8 +174,6 @@ public class WeatherService
     DateTime start,
     DateTime end)
     {
-        var today = DateTime.UtcNow.Date;
-
         if (!CanForecast(start, end))
         {
             return null;
@@ -199,7 +190,7 @@ public class WeatherService
         return await _httpClient.GetFromJsonAsync<ForecastResponse>(url)
             ?? throw new AppException(
                 "WEATHER_API_ERROR",
-                $"Failed to retrieve forecast for {cluster.RepresentativePlace.Name}");
+                $"Failed to retrieve forecast for the following location, long: {cluster.Center.Longitude} , lat: {cluster.Center.Latitude}");
     }
 
     private TravelTime MergeTravelWindows(
@@ -247,7 +238,7 @@ public class WeatherService
 
         return new TravelTime
         {
-            Location = context.Destination ?? "",
+            // Location = context.Destination ?? "",
             StartTime = bestStart,
             EndTime = bestStart.AddDays(tripDays - 1),
             WeatherScore = bestScore

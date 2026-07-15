@@ -24,7 +24,7 @@ public sealed class ScoringService
 
             foreach (var place in response.TripPlanningData.RecommendedPlaces)
             {
-                place.Score = await ScorePlace(place, session, weights);
+                place.Score = await ScorePlace(place, response, session, weights);
             }
 
             response.TripPlanningData.RecommendedPlaces =
@@ -45,6 +45,7 @@ public sealed class ScoringService
 
     private async Task<PlaceScore> ScorePlace(
     Place place,
+    TravelResponse response,
     TravelSession session,
     ScoreWeights weights)
     {
@@ -68,11 +69,11 @@ public sealed class ScoringService
             ScoreInterest(place, session),
             weights.Interest);
 
-        // AddScore(
-        //     result,
-        //     "Route",
-        //     ScoreRoute(place, altitude),
-        //     weights.Route);
+        AddScore(
+            result,
+            "Route",
+            ScoreRoute(place),
+            weights.Route);
 
         return result;
         //Adjust weigth, score range
@@ -262,14 +263,13 @@ public sealed class ScoringService
     }
 
     private double ScoreRoute(
-    Place place,
-    Altitude altitude)
+    Place place)
     {
         double distance = _utils.Haversine(
                                 place.Location.Latitude,
                                 place.Location.Longitude,
-                                altitude.Latitude,
-                                altitude.Longitude);
+                                place.PlaceCluster?.Center.Latitude ?? 0,
+                                place.PlaceCluster?.Center.Longitude ?? 0);
 
         return 5 - (distance * 0.1);
     }

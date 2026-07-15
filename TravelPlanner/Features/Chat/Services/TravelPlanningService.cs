@@ -45,8 +45,7 @@ public sealed class TravelPlanningService
         return new TripPlanningData
         {
             TravelTime = weatherTask.Result,
-            RecommendedPlaces = placesTask.Result,
-            Clusters = clusters
+            RecommendedPlaces = placesTask.Result
         };
     }
 }
