@@ -28,6 +28,6 @@ public enum StopType
     Attraction,
     Lunch,
     Coffee,
-    Attraction2,
-    Dinner
+    Dinner,
+    FreeTime
 }

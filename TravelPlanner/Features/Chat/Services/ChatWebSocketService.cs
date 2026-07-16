@@ -216,10 +216,10 @@ public sealed class ChatWebSocketService
                 travelResponse = await _scoringService.ScorePlaces(travelResponse, session);
             }
 
-            // if (session.Stage == TravelStage.SetupItinerary)
-            // {
-            //     travelResponse.itinerary = await _setupItineraryService.Setup(travelResponse, session);
-            // }
+            if (session.Stage == TravelStage.SetupItinerary)
+            {
+                travelResponse.itinerary = await _setupItineraryService.Setup(travelResponse, session);
+            }
 
         }
         catch (AppException ex)
