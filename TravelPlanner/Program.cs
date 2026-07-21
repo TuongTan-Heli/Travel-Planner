@@ -23,7 +23,6 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
-// Chat service (typed HttpClient) and websocket service
 builder.Services.AddHttpClient<ChatService>();
 builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddHttpClient<MapService>();
@@ -34,6 +33,7 @@ builder.Services.AddSingleton<TravelPlanningService>();
 builder.Services.AddSingleton<WebSocketNotifier>();
 builder.Services.AddHttpClient<CurrencyExchangeService>();
 builder.Services.AddSingleton<SetupItineraryService>();
+builder.Services.AddSingleton<PresentationService>();
 
 builder.Services.AddHttpClient<Utils>();
 builder.Services.AddMemoryCache();

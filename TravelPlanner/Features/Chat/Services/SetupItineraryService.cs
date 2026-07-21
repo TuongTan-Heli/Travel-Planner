@@ -1,3 +1,4 @@
+using TravelPlanner.Features.AI.Model;
 using TravelPlanner.Features.Map.Model;
 
 namespace TravelPlanner.Features.Chat.Services;
@@ -21,11 +22,11 @@ public sealed class SetupItineraryService
             var days = session.Context.Days ?? 1;
 
             var clusters = response.TripPlanningData.RecommendedPlaces
-            .Select(p => p.PlaceCluster)
-            .Where(c => c != null)
-            .GroupBy(c => c.Center)
-            .Select(g => g.First())
-            .ToList();
+                    .Select(p => p.PlaceCluster)
+                    .Where(c => c != null)
+                    .GroupBy(c => c?.Center)
+                    .Select(g => g.First())
+                    .ToList();
 
             if (!clusters.Any()) return itinerary;
 
@@ -65,6 +66,7 @@ public sealed class SetupItineraryService
                 }
             }
 
+            session.Stage = TravelStage.FinalPresentation;
             return itinerary;
         }
         catch (Exception ex)

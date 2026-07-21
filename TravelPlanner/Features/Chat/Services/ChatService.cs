@@ -1,7 +1,7 @@
-using System.Net.Http;
+using System.Collections.Concurrent;
+using System.Net;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 
 namespace TravelPlanner.Features.Chat.Services;
 
@@ -9,23 +9,32 @@ public class ChatService
 {
     private readonly HttpClient _http;
     private readonly string _apiKey;
-    private readonly string _apiUrl;
+    private readonly string _api25FlashUrl;
+    private readonly string _api25FlashLiteUrl;
+    private readonly string _api35FlashUrl;
+    private readonly string _api35FlashLiteUrl;
+    private readonly ConcurrentDictionary<string, List<string>> _userHistoryBySession = new();
 
     public ChatService(HttpClient http, IConfiguration configuration)
     {
         _http = http;
         _apiKey = Environment.GetEnvironmentVariable("GEN_API_KEY") ?? configuration["Generative:ApiKey"] ?? string.Empty;
-        _apiUrl = Environment.GetEnvironmentVariable("GEN_API_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api25FlashUrl = Environment.GetEnvironmentVariable("GEN_API_2.5_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api25FlashLiteUrl = Environment.GetEnvironmentVariable("GEN_API_2.5_FLASH_LITE_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api35FlashUrl = Environment.GetEnvironmentVariable("GEN_API_3.5_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api35FlashLiteUrl = Environment.GetEnvironmentVariable("GEN_API_3.5_FLASH_LITE_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
     }
 
-    public async Task<string> GenerateReplyAsync(string prompt)
+    public async Task<string> GenerateReplyAsync(string prompt, TravelSession? session = null)
     {
         if (string.IsNullOrWhiteSpace(prompt)) return string.Empty;
 
-        var url = _apiUrl;
+        var enrichedPrompt = BuildPromptWithHistory(prompt, session);
+
+        var url = _api25FlashUrl;
         if (!string.IsNullOrEmpty(_apiKey))
         {
-            url = url.Contains("?") ? $"{url}&key={_apiKey}" : $"{url}?key={_apiKey}";
+            url = CreateUrl(url);
         }
 
         // Minimal request payload — adjust if your model expects a different schema
@@ -37,7 +46,7 @@ public class ChatService
                 {
                     parts = new[]
                     {
-                        new { text = prompt }
+                        new { text = enrichedPrompt }
                     }
                 }
             },
@@ -48,62 +57,179 @@ public class ChatService
             }
         };
 
-        var body = JsonSerializer.Serialize(payload);
-        using var req = new HttpRequestMessage(HttpMethod.Post, url)
-        {
-            Content = new StringContent(body, Encoding.UTF8, "application/json")
-        };
+        
 
-        try
+        const int maxAttempts = 6;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            using var resp = await _http.SendAsync(req);
-            var respText = await resp.Content.ReadAsStringAsync();
-            if (!resp.IsSuccessStatusCode)
+            var body = JsonSerializer.Serialize(payload);
+            using var req = new HttpRequestMessage(HttpMethod.Post, url)
             {
-                throw new AppException("API_ERROR", $"API returned {resp.StatusCode}: {respText}");
-            }
-
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            };
             try
             {
-                using var doc = JsonDocument.Parse(respText);
-                var root = doc.RootElement;
+                using var resp = await _http.SendAsync(req);
+                var respText = await resp.Content.ReadAsStringAsync();
 
-                // Try common response shapes
-                if (root.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
+                if (!resp.IsSuccessStatusCode)
                 {
-                    var first = candidates[0];
-                    if (first.TryGetProperty("content", out var content) && content.TryGetProperty("parts", out var parts) && parts.GetArrayLength() > 0)
+                    if (resp.StatusCode == HttpStatusCode.TooManyRequests)
                     {
-                        var piece = parts[0];
-                        if (piece.TryGetProperty("text", out var textEl)) return textEl.GetString() ?? respText;
+                        if (attempt >= maxAttempts)
+                        {
+                            throw new AppException(
+                                "API_RATE_LIMIT",
+                                "Rate limit exceeded for all available API endpoints.");
+                        }
+
+                        if (url.Contains(_api25FlashUrl))
+                        {
+                            url = CreateUrl(_api25FlashLiteUrl);
+                        }
+                        else if (url.Contains(_api25FlashLiteUrl))
+                        {
+                            url = CreateUrl(_api35FlashUrl);
+                        }
+                        // else if (url.Contains(_api35FlashUrl))
+                        // {
+                        //     url = CreateUrl(_api35FlashLiteUrl);
+                        // }
+                        else
+                        {
+                            throw new AppException(
+                                "API_RATE_LIMIT",
+                                "Rate limit exceeded for all available API endpoints.");
+                        }
+
+                        await Task.Delay(TimeSpan.FromSeconds(10));
+                        continue;
                     }
-                    if (first.TryGetProperty("output", out var outEl) && outEl.ValueKind == JsonValueKind.String) return outEl.GetString() ?? respText;
+
+                    throw new AppException(
+                        "API_ERROR",
+                        $"API returned {resp.StatusCode}: {respText}");
                 }
 
-                if (root.TryGetProperty("output", out var output) && output.ValueKind == JsonValueKind.String)
+                try
                 {
-                    return output.GetString() ?? respText;
-                }
+                    using var doc = JsonDocument.Parse(respText);
+                    var root = doc.RootElement;
 
-                // Fallback: search for the first string value in the document
-                var sb = new StringBuilder();
-                foreach (var el in root.EnumerateObject())
+                    if (root.TryGetProperty("candidates", out var candidates) &&
+                        candidates.GetArrayLength() > 0)
+                    {
+                        var first = candidates[0];
+
+                        if (first.TryGetProperty("content", out var content) &&
+                            content.TryGetProperty("parts", out var parts) &&
+                            parts.GetArrayLength() > 0 &&
+                            parts[0].TryGetProperty("text", out var text))
+                        {
+                            return text.GetString() ?? respText;
+                        }
+
+                        if (first.TryGetProperty("output", out var output) &&
+                            output.ValueKind == JsonValueKind.String)
+                        {
+                            return output.GetString() ?? respText;
+                        }
+                    }
+
+                    if (root.TryGetProperty("output", out var rootOutput) &&
+                        rootOutput.ValueKind == JsonValueKind.String)
+                    {
+                        return rootOutput.GetString() ?? respText;
+                    }
+
+                    var sb = new StringBuilder();
+                    foreach (var property in root.EnumerateObject())
+                    {
+                        if (property.Value.ValueKind == JsonValueKind.String)
+                            sb.AppendLine(property.Value.GetString());
+                    }
+
+                    var found = sb.ToString();
+                    return string.IsNullOrWhiteSpace(found)
+                        ? respText
+                        : found.Trim();
+                }
+                catch
                 {
-                    if (el.Value.ValueKind == JsonValueKind.String) sb.AppendLine(el.Value.GetString());
+                    throw new AppException("API_RESP", respText);
                 }
-
-                var found = sb.ToString();
-                return string.IsNullOrWhiteSpace(found) ? respText : found.Trim();
             }
-            catch
+            catch (AppException)
             {
-                throw new AppException("API_RESP", respText);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new AppException("API_ERROR", ex.Message, ex);
             }
         }
-        catch (AppException ex)
+
+        throw new AppException("API_RATE_LIMIT", "Rate limit exceeded for all available API endpoints.");
+    }
+
+    public void ClearSessionHistory(TravelSession? session)
+    {
+        if (session == null) return;
+
+        var sessionId = session.SessionId;
+        if (!string.IsNullOrWhiteSpace(sessionId))
         {
-            throw new AppException("API_ERROR", ex.Message, ex);
+            _userHistoryBySession.TryRemove(sessionId, out _);
         }
+    }
+
+    private string BuildPromptWithHistory(string prompt, TravelSession? session)
+    {
+        if (session == null)
+        {
+            return prompt;
+        }
+
+        var sessionId = session.SessionId;
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            sessionId = Guid.NewGuid().ToString("N");
+            session.SessionId = sessionId;
+        }
+
+        var history = _userHistoryBySession.GetOrAdd(sessionId, _ => new List<string>());
+        if (history.Count == 0 || history[^1] != prompt)
+        {
+            history.Add(prompt);
+        }
+
+        var previousMessages = history
+            .TakeLast(Math.Min(history.Count, 8))
+            .Take(Math.Max(0, history.Count - 1))
+            .ToList();
+
+        if (previousMessages.Count == 0)
+        {
+            return prompt;
+        }
+
+        var builder = new StringBuilder();
+        builder.AppendLine("Conversation history (user only):");
+        foreach (var previousMessage in previousMessages)
+        {
+            builder.AppendLine($"- {previousMessage}");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("Current user message:");
+        builder.AppendLine(prompt);
+
+        return builder.ToString();
+    }
+
+    private String CreateUrl(String url)
+    {
+        return url.Contains("?") ? $"{url}&key={_apiKey}" : $"{url}?key={_apiKey}";
     }
 }
 

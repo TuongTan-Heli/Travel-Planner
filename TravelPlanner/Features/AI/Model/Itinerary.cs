@@ -1,3 +1,4 @@
+namespace TravelPlanner.Features.AI.Model;
 public class Itinerary
 {
     public List<DayPlan> DayPlans { get; set; } = [];

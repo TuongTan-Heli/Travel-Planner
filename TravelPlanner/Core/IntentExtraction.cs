@@ -15,11 +15,13 @@ public sealed class IntentExtractionService
 
     public async Task<IntentExtractionResponse> ExtractAsync(
         TravelSession session,
+        TravelResponse response,
         string userMessage)
     {
         var prompt = PromptBuilder.Build(
             TravelStage.IntentExtraction,
             session.Context,
+            response,
             userMessage);
 
         var options = new JsonSerializerOptions
@@ -27,7 +29,7 @@ public sealed class IntentExtractionService
             PropertyNameCaseInsensitive = true
         };
 
-        var replyText = await _chatService.GenerateReplyAsync(prompt);
+        var replyText = await _chatService.GenerateReplyAsync(prompt, session);
 
         var result = JsonSerializer.Deserialize<TravelIntentResult>(
             replyText,

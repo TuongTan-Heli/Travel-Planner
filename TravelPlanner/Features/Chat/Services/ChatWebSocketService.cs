@@ -18,15 +18,19 @@ public sealed class ChatWebSocketService
     private readonly TravelPlanningService _travelPlanningService;
     private readonly ScoringService _scoringService;
     private readonly ConcurrentDictionary<WebSocket, TravelSession> _sessions = new();
-
     private readonly SetupItineraryService _setupItineraryService;
-    public ChatWebSocketService(IntentExtractionService intentExtractionService, TravelPlanningService travelPlanningService, WebSocketNotifier webSocketNotifier, ScoringService scoringService, SetupItineraryService setupItineraryService)
+    private readonly PresentationService _presentationService;
+    private readonly ChatService _chatService;
+    public ChatWebSocketService(IntentExtractionService intentExtractionService, TravelPlanningService travelPlanningService, WebSocketNotifier webSocketNotifier,
+                                ScoringService scoringService, SetupItineraryService setupItineraryService, PresentationService presentationService, ChatService chatService)
     {
         _intentExtractionService = intentExtractionService;
         _travelPlanningService = travelPlanningService;
         _webSocketNotifier = webSocketNotifier;
         _scoringService = scoringService;
         _setupItineraryService = setupItineraryService;
+        _presentationService = presentationService;
+        _chatService = chatService;
     }
     private TravelSession GetSession(WebSocket socket)
     {
@@ -46,8 +50,9 @@ public sealed class ChatWebSocketService
         }
         finally
         {
-            _sessions.TryRemove(socket, out _);
+            _sessions.TryRemove(socket, out var session);
             _sockets.TryRemove(socket, out _);
+            _chatService.ClearSessionHistory(session);
             await CloseSocketAsync(socket);
         }
     }
@@ -182,7 +187,7 @@ public sealed class ChatWebSocketService
             {
                 var thinkingId = Guid.NewGuid().ToString();
 
-                var extractionTask = _intentExtractionService.ExtractAsync(session, input.Text);
+                var extractionTask = _intentExtractionService.ExtractAsync(session, travelResponse, input.Text);
 
                 var animationTask = RunThinkingAnimationAsync(socket, thinkingId, extractionTask);
 
@@ -218,8 +223,35 @@ public sealed class ChatWebSocketService
 
             if (session.Stage == TravelStage.SetupItinerary)
             {
-                travelResponse.itinerary = await _setupItineraryService.Setup(travelResponse, session);
+                travelResponse.Itinerary = await _setupItineraryService.Setup(travelResponse, session);
             }
+
+            if (session.Stage == TravelStage.FinalPresentation)
+            {
+                travelResponse.FinalPresentation =
+                    await _presentationService.Present(travelResponse, session);
+
+                var reply = new ChatMessage
+                {
+                    Id = "Presentation",
+                    Text = JsonSerializer.Serialize(
+                        travelResponse.FinalPresentation,
+                        new JsonSerializerOptions
+                        {
+                            WriteIndented = true
+                        }),
+                    Type = ChatMessageType.Incoming,
+                    Sender = "Bot",
+                    Timestamp = DateTime.UtcNow.ToString("o"),
+                    Thinking = false
+                };
+
+                await BroadcastMessageAsync(socket, reply);
+            }
+
+
+
+            // AddToHistory(reply);
 
         }
         catch (AppException ex)
