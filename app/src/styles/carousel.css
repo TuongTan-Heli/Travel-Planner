@@ -1,19 +1,130 @@
-.carousel-panel ul,
-.chat-panel ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
+.carousel-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.carousel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
 }
 
+.carousel-eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+.carousel-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.carousel-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.carousel-nav button,
+.carousel-dots button {
+  border: none;
+  cursor: pointer;
+}
+
+.carousel-nav button {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.carousel-viewport {
+  overflow: hidden;
+  border-radius: 16px;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.35s ease;
+  will-change: transform;
+}
+
 .carousel-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 0.95rem;
-  background: #f8fafc;
+  flex: 0 0 100%;
+  min-height: 170px;
+  padding: 1rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
 }
 
 .carousel-card h4 {
-  margin: 0 0 0.35rem;
+  margin: 0;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.carousel-card p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.carousel-accent {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #8b5cf6;
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.carousel-dots button {
+  width: 0.65rem;
+  height: 0.65rem;
+  padding: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.carousel-dots button.active {
+  background: #6366f1;
+  transform: scale(1.15);
+}
+
+.carousel-viewport.dragging .carousel-card {
+  cursor: grabbing;
+}
+
+@media (min-width: 768px) {
+  .carousel-card {
+    min-height: 190px;
+    padding: 1.2rem;
+  }
 }

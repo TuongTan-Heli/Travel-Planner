@@ -181,7 +181,7 @@ public class PromptTemplate
                         {
                         "placeId": "string",
                         "placeName": "string",
-                        "reason": "Why this is a good alternative.",
+                        "whyVisit": "Why this is a good alternative.",
                         }
                     ]
                     }
@@ -207,6 +207,7 @@ public class PromptTemplate
             - Prefer alternatives with similar experience or category.
             - Do not repeat places already scheduled unless there are no other suitable alternatives.
             - Return ONLY valid JSON.
+            - Type: only use one of these values: Breakfast | Attraction | Lunch | Coffee | Dinner | FreeTime",
 
             Trip information
 

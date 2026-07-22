@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using TravelPlanner.Features.Chat.Models;
 
 namespace TravelPlanner.Features.Chat.Services;
@@ -149,10 +150,15 @@ public sealed class ChatWebSocketService
         }
 
         ChatMessageInput? input;
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         try
         {
-            input = JsonSerializer.Deserialize<ChatMessageInput>(messageJson, options);
+            input = JsonSerializer.Deserialize<ChatMessageInput>(messageJson, 
+            new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            });
         }
         catch (Exception ex)
         {
@@ -228,8 +234,7 @@ public sealed class ChatWebSocketService
 
             if (session.Stage == TravelStage.FinalPresentation)
             {
-                travelResponse.FinalPresentation =
-                    await _presentationService.Present(travelResponse, session);
+                travelResponse.FinalPresentation = await _presentationService.Present(travelResponse, session);
 
                 var reply = new ChatMessage
                 {

@@ -1,0 +1,149 @@
+import { useEffect, useState, type PointerEvent } from 'react';
+import type { Itinerary } from '../models/itinerary';
+
+interface TripCarouselProps {
+  data?: Itinerary | null;
+}
+
+interface Slide {
+  title: string;
+  subtitle: string;
+  body: string;
+}
+
+export default function TripCarousel({ data }: TripCarouselProps) {
+  const slides = buildSlides(data);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [startX, setStartX] = useState<number | null>(null);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    setDragOffset(0);
+  }, [slides.length]);
+
+  const goToSlide = (index: number) => {
+    if (slides.length <= 1) return;
+    setActiveIndex((index + slides.length) % slides.length);
+  };
+
+  const nextSlide = () => goToSlide(activeIndex + 1);
+  const prevSlide = () => goToSlide(activeIndex - 1);
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (slides.length <= 1) return;
+    setDragging(true);
+    setStartX(event.clientX);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!dragging || startX === null || slides.length <= 1) return;
+    setDragOffset(event.clientX - startX);
+  };
+
+  const handlePointerUp = () => {
+    if (!dragging || startX === null || slides.length <= 1) return;
+
+    if (dragOffset < -50) {
+      nextSlide();
+    } else if (dragOffset > 50) {
+      prevSlide();
+    }
+
+    setDragging(false);
+    setDragOffset(0);
+    setStartX(null);
+  };
+
+  if (!slides.length) {
+    return null;
+  }
+
+  return (
+    <section className="trip-carousel">
+      <div className="trip-carousel-header">
+        <div>
+          <p className="trip-carousel-eyebrow">Itinerary flow</p>
+          <h3>Explore your plan</h3>
+        </div>
+        {slides.length > 1 && (
+          <div className="trip-carousel-nav" aria-label="Carousel controls">
+            <button type="button" onClick={prevSlide} aria-label="Previous slide">
+              ←
+            </button>
+            <button type="button" onClick={nextSlide} aria-label="Next slide">
+              →
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div
+        className={`trip-carousel-viewport ${dragging ? 'dragging' : ''}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        <div
+          className="trip-carousel-track"
+          style={{ transform: `translateX(calc(${-activeIndex * 100}% + ${dragOffset}px))` }}
+        >
+          {slides.map((slide) => (
+            <article key={slide.title} className="trip-carousel-card">
+              <p className="trip-carousel-accent">{slide.subtitle}</p>
+              <h4>{slide.title}</h4>
+              <p>{slide.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      {slides.length > 1 && (
+        <div className="trip-carousel-dots" aria-label="Carousel dots">
+          {slides.map((slide, index) => (
+            <button
+              key={slide.title}
+              type="button"
+              className={index === activeIndex ? 'active' : ''}
+              onClick={() => goToSlide(index)}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function buildSlides(data?: Itinerary | null): Slide[] {
+  const slides: Slide[] = [];
+
+  if (data?.TripSummary) {
+    slides.push({
+      title: 'Trip Summary',
+      subtitle: 'Overview',
+      body: data.TripSummary,
+    });
+  }
+
+  if (data?.GeneralTips?.length) {
+    slides.push({
+      title: 'Helpful tips',
+      subtitle: 'Planning notes',
+      body: data.GeneralTips.join(' • '),
+    });
+  }
+
+  data?.Days?.forEach((day) => {
+    slides.push({
+      title: `Day ${day.DayNumber}`,
+      subtitle: 'Day plan',
+      body: `${day.Summary}${day.Tips?.length ? `\n\nTips: ${day.Tips.join(' • ')}` : ''}`,
+    });
+  });
+
+  return slides;
+}

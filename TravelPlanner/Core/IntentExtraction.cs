@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TravelPlanner.Features.Chat.Services;
 
@@ -24,16 +25,16 @@ public sealed class IntentExtractionService
             response,
             userMessage);
 
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
         var replyText = await _chatService.GenerateReplyAsync(prompt, session);
 
         var result = JsonSerializer.Deserialize<TravelIntentResult>(
             replyText,
-            options) ?? throw new AppException(
+            new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            }) ?? throw new AppException(
                 "INTENT_PARSE_ERROR",
                 "Failed to parse intent extraction result.");
         MergeContext(session.Context, result);

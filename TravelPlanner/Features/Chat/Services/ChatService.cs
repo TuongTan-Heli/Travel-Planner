@@ -74,7 +74,7 @@ public class ChatService
 
                 if (!resp.IsSuccessStatusCode)
                 {
-                    if (resp.StatusCode == HttpStatusCode.TooManyRequests)
+                    if (resp.StatusCode == HttpStatusCode.TooManyRequests || resp.StatusCode == HttpStatusCode.ServiceUnavailable)
                     {
                         if (attempt >= maxAttempts)
                         {
@@ -102,7 +102,7 @@ public class ChatService
                                 "Rate limit exceeded for all available API endpoints.");
                         }
 
-                        await Task.Delay(TimeSpan.FromSeconds(10));
+                        await Task.Delay(TimeSpan.FromSeconds(6));
                         continue;
                     }
 

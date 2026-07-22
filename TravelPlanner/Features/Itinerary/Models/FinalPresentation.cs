@@ -43,5 +43,5 @@ public class ActivityAlternative
 
     public string PlaceName { get; init; } = "";
 
-    public string Reason { get; init; } = "";
+    public string WhyVisit { get; init; } = "";
 }

@@ -1,6 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import '../styles/chat.css';
 import TypeWriter from './TypeWriter';
+import { useAppDispatch } from '../store/hooks';
+import { setPresentationData } from '../store/itinerarySlice';
+import { Itinerary } from '../models/itinerary';
 
 // Simple UUID generator
 const Guid = {
@@ -32,6 +35,7 @@ export default function Chat() {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -48,7 +52,21 @@ export default function Chat() {
         const message = JSON.parse(event.data) as ChatMessage;
         if (message.id === "error") {
           setError(message.text);
+          return;
         }
+
+        if (message.id === "Presentation") {
+          let parsed: Itinerary;
+          try {
+            parsed = JSON.parse(message.text) as Itinerary;
+          } catch {
+            console.error("Invalid presentation JSON");
+            return;
+          }
+          dispatch(setPresentationData(parsed));
+          return;
+        }
+
         setMessages((prev) => {
           const index = prev.findIndex((m) => m.id === message.id);
           if (index !== -1) {
@@ -85,7 +103,6 @@ export default function Chat() {
       return;
     }
 
-    // Add immediate local echo so user sees their message instantly
     const messageId = Guid.NewGuid();
     const localMessage: ChatMessage = {
       id: messageId,
@@ -96,7 +113,6 @@ export default function Chat() {
     };
     setMessages((prev) => [...prev, localMessage]);
 
-    // Send to server with the same ID so the server echo updates the same message
     const outgoing: OutgoingMessage = { id: messageId, text };
     socket.send(JSON.stringify(outgoing));
   };
@@ -136,8 +152,7 @@ export default function Chat() {
                   <div key={message.id} className="chat-message incoming">
                     <TypeWriter
                       text={message.text}
-                      speed={4}
-                    />
+                      speed={4} />
                   </div>);
               }
             }

@@ -18,19 +18,17 @@ public class PresentationService
                     session.Context,
                     response);
 
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
-        options.Converters.Add(new JsonStringEnumConverter());
-
         var replyText = await _chatService.GenerateReplyAsync(prompt, session);
         try
         {
             var result = JsonSerializer.Deserialize<FinalPresentation>(
                 replyText,
-                options) ?? throw new AppException(
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    WriteIndented = true,
+                    Converters ={ new JsonStringEnumConverter() }
+                }) ?? throw new AppException(
                     "INTENT_PARSE_ERROR",
                     "Failed to parse intent extraction result.");
 
