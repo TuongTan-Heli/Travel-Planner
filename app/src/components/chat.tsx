@@ -59,6 +59,7 @@ export default function Chat() {
           let parsed: Itinerary;
           try {
             parsed = JSON.parse(message.text) as Itinerary;
+            console.log("Parsed presentation data:", parsed);
           } catch {
             console.error("Invalid presentation JSON");
             return;

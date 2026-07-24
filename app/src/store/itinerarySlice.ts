@@ -1,12 +1,14 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { Itinerary } from '../models/itinerary';
+import type { Itinerary } from '../models/itinerary';
 
 export interface ItineraryState {
   presentationData: Itinerary | null;
+  activeDayIndex: number;
 }
 
 const initialState: ItineraryState = {
-  presentationData: null
+  presentationData: null,
+  activeDayIndex: 0
 };
 
 const itinerarySlice = createSlice({
@@ -15,12 +17,17 @@ const itinerarySlice = createSlice({
   reducers: {
     setPresentationData(state, action: PayloadAction<Itinerary>) {
       state.presentationData = action.payload;
+      state.activeDayIndex = 0;
     },
     clearPresentationData(state) {
       state.presentationData = null;
+      state.activeDayIndex = 0;
+    },
+    setActiveDayIndex(state, action: PayloadAction<number>) {
+      state.activeDayIndex = Math.max(0, action.payload);
     }
   }
 });
 
-export const { setPresentationData, clearPresentationData } = itinerarySlice.actions;
+export const { setPresentationData, clearPresentationData, setActiveDayIndex } = itinerarySlice.actions;
 export default itinerarySlice.reducer;

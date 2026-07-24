@@ -113,34 +113,72 @@ public class PromptTemplate
                 context.Budget,
                 context.Travelers,
                 context.Interests,
+                // Preferences = context.Preferences
             },
 
             Itinerary = response.Itinerary.DayPlans.Select(day => new
             {
                 day.DayNumber,
-                Hotel = day.Hotel?.Name,
+                Hotel = day.Hotel == null ? null : new
+                    {
+                        PlaceId = BuildPlaceId(day.Hotel),
+                        Name = day.Hotel.Name,
+                        Address = day.Hotel.Address
+                    },
 
                 Activities = day.Stops.Select(stop => new
                 {
-                    PlaceName = stop.Place.Name,
-                    Category = stop.Place.Category.ToString(),
-                    PrimaryType = stop.Place.PrimaryType,
-                    Address = stop.Place.Address,
-                    Score = stop.Place.Score.TotalScore,
+                    PlaceId = BuildPlaceId(stop.Place),
+
+                    Place = new
+                    {
+                        Name = stop.Place.Name,
+                        Address = stop.Place.Address,
+                        Category = stop.Place.Category.ToString(),
+                        PrimaryType = stop.Place.PrimaryType,
+                        Rating = stop.Place.Rating,
+                        Location = stop.Place.Location
+                    },
+
                     Type = stop.Type.ToString(),
-                    Duration = stop.EstimatedHours
+                    DurationHours = stop.EstimatedHours,
+                    TravelMinutesFromPrevious = stop.TravelMinutesFromPrevious
                 })
             }),
 
             CandidatePlaces = response.TripPlanningData.RecommendedPlaces
-        .Select(p => new
-        {
-            p.Name,
-            p.Category,
-            p.PrimaryType,
-            p.Address,
-            Score = p.Score.TotalScore
-        })
+            .Select(p => new
+            {
+                p.Name,
+                p.Category,
+                p.PrimaryType,
+                p.Address,
+                Score = p.Score.TotalScore
+            }),
+            TravelTime = response.TripPlanningData.TravelTime == null ? null : new
+            {
+                response.TripPlanningData.TravelTime.StartTime,
+                response.TripPlanningData.TravelTime.EndTime,
+                response.TripPlanningData.TravelTime.WeatherScore,
+                Forecasts = response.TripPlanningData.TravelTime.Forecasts.Select(x => new
+                {
+                    Location = new
+                    {
+                        x.Location.Latitude,
+                        x.Location.Longitude
+                    },
+                    Days = x.Days.Select(d => new
+                    {
+                        d.Date,
+                        d.AvgTemp,
+                        d.MaxTemp,
+                        d.MinTemp,
+                        d.Rainfall,
+                        d.WeatherCode,
+                        d.Score
+                    })
+                })
+            },
         };
 
         return $$"""
@@ -154,64 +192,132 @@ public class PromptTemplate
 
             Return ONLY valid JSON.
             Do not wrap the JSON in markdown.
-
+            
             JSON Schema:
 
             {
-            "tripSummary": "string",
-            "generalTips": [
-                "string"
-            ],
-            "days": [
-                {
-                "dayNumber": "int",
-                "summary": "string",
-                "weather": "string|null",
-                "tips": [
-                    "string"
-                ],
-                "activities": [
+                "tripSummary": "string",
+                "generalTips": ["string"],
+
+                "trip": {
+                    "country": "string|null",
+                    "destination": "string|null",
+                    "startDate": "string|null",
+                    "endDate": "string|null",
+                    "days": "number|null",
+                    "budget": "object|null",
+                    "travelers": "number|null",
+                    "interests": ["string"]
+                },
+
+                "itinerary": [
                     {
-                    "placeId": "string",
-                    "placeName": "string",
-                    "type": "Breakfast | Attraction | Lunch | Coffee | Dinner | FreeTime",
-                    "description": "Explain what this place offers.",
-                    "whyVisit": "Explain why this stop was selected for this itinerary.",
-                    "alternatives": [
-                        {
+                    "dayNumber": "number",
+                    "summary": "string",
+                    "weather": "string|null",
+                    "tips": ["string"],
+
+                    "hotel": {
                         "placeId": "string",
-                        "placeName": "string",
-                        "whyVisit": "Why this is a good alternative.",
+                        "name": "string",
+                        "address": "string",
+                        "primaryType": "string",
+                        "category": "string",
+                        "rating": "number|null",
+                        "location": {
+                        "latitude": "number",
+                        "longitude": "number"
+                        }
+                    },
+
+                    "activities": [
+                        {
+                        "type": "Breakfast | Attraction | Lunch | Coffee | Dinner | FreeTime",
+
+                        "description": "string",
+                        "whyVisit": "string",
+
+                        "stopType": "string",
+                        "durationHours": "number",
+                        "travelMinutesFromPrevious": "number",
+
+                        "place": {
+                            "placeId": "string",
+                            "name": "string",
+                            "address": "string",
+                            "primaryType": "string",
+                            "category": "string",
+                            "rating": "number|null",
+                            "location": {
+                            "latitude": "number",
+                            "longitude": "number"
+                            }
+                        },
+
+                        "alternatives": [
+                            {
+                            "whyVisit": "string",
+                            "place": {
+                                "placeId": "string",
+                                "name": "string",
+                                "address": "string"
+                            }
+                            }
+                        ]
                         }
                     ]
                     }
-                ]
+                ],
+
+                "travelTime": {
+                    "startTime": "string|null",
+                    "endTime": "string|null",
+                    "weatherScore": "number|null",
+                    "forecasts": []
                 }
-            ]
-            }
+                }
 
-            Rules:
+            Generate:
+                Presentation:
+                - tripSummary
+                - generalTips
 
-            - Generate a concise Trip Summary (2-3 sentences).
-            - Generate 3-5 General Tips for the whole trip.
-            - Generate a short summary for each day.
-            - Generate a short description for every activity.
-            - Explain why each activity is worth visiting.
-            - If weather information exists, summarize it in one sentence.
-            - Keep descriptions concise (1-3 sentences).
-            - Use a friendly travel-guide tone.
-            - Never invent places.
-            - Never recommend places outside the provided planning result.
-            - Alternatives MUST come ONLY from the provided candidate places.
-            - Prefer alternatives in the same cluster/area.
-            - Prefer alternatives with similar experience or category.
-            - Do not repeat places already scheduled unless there are no other suitable alternatives.
-            - Return ONLY valid JSON.
-            - Type: only use one of these values: Breakfast | Attraction | Lunch | Coffee | Dinner | FreeTime",
+                Trip:
+                - copy trip information exactly.
 
-            Trip information
+                Itinerary:
+                - copy every dayNumber.
+                - copy every hotel.
+                - copy every activity place.
+                - copy stopType.
+                - copy durationHours.
+                - copy travelMinutesFromPrevious.
+
+                Only generate:
+                - summary
+                - weather
+                - tips
+                - description
+                - whyVisit
+                - alternatives
+
+                TravelTime:
+                - copy from source if available.
+                - otherwise return null.
+
+                Trip information must always be returned.
+                Copy exactly from source.
+                Never omit this field.
+                placeId must be copied exactly from source.
+                Do not generate placeId.
+                Trip information
 
             {{JsonSerializer.Serialize(promptData)}}
             """;
+    }
+
+    private static string BuildPlaceId(Place place)
+    {
+        return $"{place.Name}|{place.Address}|{place.Location.Latitude}|{place.Location.Longitude}";
     }
 }

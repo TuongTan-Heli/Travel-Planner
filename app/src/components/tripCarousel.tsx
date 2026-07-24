@@ -1,4 +1,6 @@
 import { useEffect, useState, type PointerEvent } from 'react';
+import { useAppDispatch } from '../store/hooks';
+import { setActiveDayIndex } from '../store/itinerarySlice';
 import type { Itinerary } from '../models/itinerary';
 
 interface TripCarouselProps {
@@ -9,10 +11,12 @@ interface Slide {
   title: string;
   subtitle: string;
   body: string;
+  dayIndex?: number;
 }
 
 export default function TripCarousel({ data }: TripCarouselProps) {
   const slides = buildSlides(data);
+  const dispatch = useAppDispatch();
   const [activeIndex, setActiveIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -21,11 +25,19 @@ export default function TripCarousel({ data }: TripCarouselProps) {
   useEffect(() => {
     setActiveIndex(0);
     setDragOffset(0);
-  }, [slides.length]);
+    dispatch(setActiveDayIndex(0));
+  }, [slides.length, dispatch]);
 
   const goToSlide = (index: number) => {
     if (slides.length <= 1) return;
-    setActiveIndex((index + slides.length) % slides.length);
+
+    const nextIndex = (index + slides.length) % slides.length;
+    setActiveIndex(nextIndex);
+
+    const slide = slides[nextIndex];
+    if (slide.dayIndex !== undefined) {
+      dispatch(setActiveDayIndex(slide.dayIndex));
+    }
   };
 
   const nextSlide = () => goToSlide(activeIndex + 1);
@@ -85,12 +97,10 @@ export default function TripCarousel({ data }: TripCarouselProps) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
+        onPointerCancel={handlePointerUp}>
         <div
           className="trip-carousel-track"
-          style={{ transform: `translateX(calc(${-activeIndex * 100}% + ${dragOffset}px))` }}
-        >
+          style={{ transform: `translateX(calc(${-activeIndex * 100}% + ${dragOffset}px))` }} >
           {slides.map((slide) => (
             <article key={slide.title} className="trip-carousel-card">
               <p className="trip-carousel-accent">{slide.subtitle}</p>
@@ -121,27 +131,32 @@ export default function TripCarousel({ data }: TripCarouselProps) {
 function buildSlides(data?: Itinerary | null): Slide[] {
   const slides: Slide[] = [];
 
-  if (data?.TripSummary) {
+  if (!data) {
+    return slides;
+  }
+
+  if (data.tripSummary) {
     slides.push({
       title: 'Trip Summary',
-      subtitle: 'Overview',
-      body: data.TripSummary,
+      subtitle: data.trip.destination ?? 'Overview',
+      body: data.tripSummary,
     });
   }
 
-  if (data?.GeneralTips?.length) {
+  if (data.generalTips.length) {
     slides.push({
-      title: 'Helpful tips',
-      subtitle: 'Planning notes',
-      body: data.GeneralTips.join(' • '),
+      title: 'Helpful Tips',
+      subtitle: 'Planning Notes',
+      body: data.generalTips.join(' • '),
     });
   }
 
-  data?.Days?.forEach((day) => {
+  data.itinerary.forEach((day, index) => {
     slides.push({
-      title: `Day ${day.DayNumber}`,
-      subtitle: 'Day plan',
-      body: `${day.Summary}${day.Tips?.length ? `\n\nTips: ${day.Tips.join(' • ')}` : ''}`,
+      title: `Day ${day.dayNumber}`,
+      subtitle: day.weather ?? 'Day Plan',
+      body: `${day.summary}${day.tips.length ? `\n\nTips: ${day.tips.join(' • ')}` : ''}`,
+      dayIndex: index,
     });
   });
 

@@ -1,0 +1,141 @@
+.day-map-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.day-map-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.day-map-info-window {
+  min-width: 260px;
+  max-width: 320px;
+  padding: 6px 2px;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.day-map-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.day-map-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.day-map-address {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.day-map-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.day-map-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.day-map-star {
+  font-size: 15px;
+  line-height: 1;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.day-map-rating-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.day-map-meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.day-map-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.day-map-tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.day-map-description {
+  margin: 0;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.day-map-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.day-map-link {
+  font-size: 12px;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.day-map-link:hover {
+  text-decoration: underline;
+}
+
+.day-map-activity-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.day-map-activity-content {
+  flex: 1;
+}
+
+.day-map-activity-title {
+  font-weight: 700;
+  color: #111827;
+}
+
+.day-map-activity-subtitle {
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.day-map-activity-button {
+  border: none;
+  background: #f8fafc;
+  color: #334155;
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}

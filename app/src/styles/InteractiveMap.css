@@ -2,15 +2,33 @@
   min-height: 320px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 1rem;
 }
 
 .map-frame {
-  height: 240px;
+  flex: 1;
+  min-height: 360px;
   border-radius: 16px;
   background: linear-gradient(135deg, #dbeafe, #e2e8f0);
   display: grid;
   place-items: center;
   color: #0f172a;
   text-align: center;
+  overflow: hidden;
+}
+
+.map-frame > div {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .map-panel {
+    min-height: 0;
+  }
+
+  .map-frame {
+    min-height: 320px;
+  }
 }

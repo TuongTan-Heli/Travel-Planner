@@ -1,12 +1,14 @@
 .planner-root {
   display: grid;
   gap: 1.5rem;
+  width: 100%;
 }
 
 .planner-top {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .planner-bottom {
@@ -22,6 +24,13 @@
   border-radius: 18px;
   padding: 1.5rem;
   box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+  height: 100%;
+}
+
+.planner-panel,
+.map-panel {
+  display: flex;
+  flex-direction: column;
 }
 
 .planner-panel h2,
@@ -35,6 +44,7 @@
   flex-direction: column;
   gap: 0.9rem;
   margin-top: 0.75rem;
+  flex: 1;
 }
 
 .trip-carousel-header {
@@ -155,11 +165,18 @@
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .planner-top {
     grid-template-columns: 1fr;
   }
 
+  .planner-panel,
+  .map-panel {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 768px) {
   .trip-carousel-card {
     min-height: 210px;
   }

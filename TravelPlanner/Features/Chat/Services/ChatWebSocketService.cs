@@ -243,7 +243,8 @@ public sealed class ChatWebSocketService
                         travelResponse.FinalPresentation,
                         new JsonSerializerOptions
                         {
-                            WriteIndented = true
+                            WriteIndented = true,
+                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                         }),
                     Type = ChatMessageType.Incoming,
                     Sender = "Bot",
