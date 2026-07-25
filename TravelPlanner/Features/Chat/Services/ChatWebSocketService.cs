@@ -224,7 +224,7 @@ public sealed class ChatWebSocketService
 
             if (session.Stage == TravelStage.Scoring)
             {
-                travelResponse = await _scoringService.ScorePlaces(travelResponse, session);
+                travelResponse.TripPlanningData.RecommendedPlaces = await _scoringService.ScorePlaces(travelResponse.TripPlanningData.RecommendedPlaces, session);
             }
 
             if (session.Stage == TravelStage.SetupItinerary)
@@ -253,10 +253,8 @@ public sealed class ChatWebSocketService
                 };
 
                 await BroadcastMessageAsync(socket, reply);
+                session.Stage = TravelStage.IntentExtraction;
             }
-
-
-
             // AddToHistory(reply);
 
         }

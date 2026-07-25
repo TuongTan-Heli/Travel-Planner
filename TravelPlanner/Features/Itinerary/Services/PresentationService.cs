@@ -1,6 +1,7 @@
 using TravelPlanner.Features.Chat.Services;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 public class PresentationService
 {
@@ -18,10 +19,11 @@ public class PresentationService
                     response);
 
         var replyText = await _chatService.GenerateReplyAsync(prompt, session);
+        var cleanedJson = FixInvalidJsonEscapes(replyText);
         try
         {
             var result = JsonSerializer.Deserialize<FinalPresentation>(
-                replyText,
+                cleanedJson,
                 new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
@@ -76,10 +78,10 @@ public class PresentationService
             Types = place.Types,
             PriceRange = place.PriceRange,
             Reviews = place.Reviews,
-            OpenTime = place.OpenTime,  
+            OpenTime = place.OpenTime,
             PhoneNumber = place.PhoneNumber,
             WebsiteUrl = place.WebsiteUrl,
-            DineIn = place.DineIn, 
+            DineIn = place.DineIn,
             AllowsDogs = place.AllowsDogs,
             GoodForChildren = place.GoodForChildren,
             GoodForGroups = place.GoodForGroups,
@@ -152,7 +154,7 @@ public class PresentationService
     {
         if (current == null || string.IsNullOrEmpty(current.PlaceId))
         {
-            return current;
+            return current!;
         }
 
         if (!source.TryGetValue(current.PlaceId, out var place))
@@ -161,5 +163,13 @@ public class PresentationService
         }
 
         return MapPlace(place);
+    }
+
+    private static string FixInvalidJsonEscapes(string json)
+    {
+        return Regex.Replace(
+            json,
+            @"\\(?![""\\/bfnrtu])",
+            @"\\");
     }
 }

@@ -12,7 +12,7 @@ public class ChatService
     private readonly string _api25FlashUrl;
     private readonly string _api25FlashLiteUrl;
     private readonly string _api35FlashUrl;
-    private readonly string _api35FlashLiteUrl;
+    private readonly string _api36FlashUrl;
     private readonly ConcurrentDictionary<string, List<string>> _userHistoryBySession = new();
 
     public ChatService(HttpClient http, IConfiguration configuration)
@@ -22,7 +22,7 @@ public class ChatService
         _api25FlashUrl = Environment.GetEnvironmentVariable("GEN_API_2.5_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
         _api25FlashLiteUrl = Environment.GetEnvironmentVariable("GEN_API_2.5_FLASH_LITE_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
         _api35FlashUrl = Environment.GetEnvironmentVariable("GEN_API_3.5_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
-        _api35FlashLiteUrl = Environment.GetEnvironmentVariable("GEN_API_3.5_FLASH_LITE_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api36FlashUrl = Environment.GetEnvironmentVariable("GEN_API_3.6_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
     }
 
     public async Task<string> GenerateReplyAsync(string prompt, TravelSession? session = null)
@@ -91,10 +91,10 @@ public class ChatService
                         {
                             url = CreateUrl(_api35FlashUrl);
                         }
-                        // else if (url.Contains(_api35FlashUrl))
-                        // {
-                        //     url = CreateUrl(_api35FlashLiteUrl);
-                        // }
+                        else if (url.Contains(_api35FlashUrl))
+                        {
+                            url = CreateUrl(_api36FlashUrl);
+                        }
                         else
                         {
                             throw new AppException(

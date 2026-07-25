@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
+using TravelPlanner.Features.Chat.Services;
 using TravelPlanner.Features.Map.Model;
 
 namespace TravelPlanner.Features.Map;
@@ -9,15 +10,25 @@ public class MapService
 {
     private readonly HttpClient _httpClient;
     private readonly Utils _utils;
+    private readonly ScoringService _scoringService;
     private readonly string _path;
     private readonly string _searchNearbyUrl;
     private readonly string _searchTextUrl;
     private const int maxAttemptCall = 5;
 
-    public MapService(HttpClient httpClient, Utils utils)
+    private static readonly Dictionary<PlaceCategory, int> ClusterMinimum = new()
+    {
+        { PlaceCategory.Travel, 5 },
+        { PlaceCategory.Restaurant, 3 },
+        { PlaceCategory.Hotel, 2 }
+    };
+
+
+    public MapService(HttpClient httpClient, Utils utils, ScoringService scoringService)
     {
         _httpClient = httpClient;
         _utils = utils;
+        _scoringService = scoringService;
         _searchNearbyUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_NEARBY_API_URL") ?? string.Empty;
         _searchTextUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_TEXT_API_URL") ?? string.Empty;
         _path = Environment.GetEnvironmentVariable("GOOGLE_ACCESS_PATH") ?? string.Empty;
@@ -40,178 +51,175 @@ public class MapService
 
     public async Task<List<Place>> GetMapDataAsync(List<PlaceCluster> clusters, TravelPromptContext context)
     {
-        int AttemptCall = 0;
-        int consecutiveDuplicateCalls = 0;
         try
         {
-            List<Place> places = new List<Place>();
             var token = await GetAccessTokenAsync();
+
+            var clusterPlaces = new List<List<Place>>();
 
             foreach (var cluster in clusters)
             {
-                var (lat, lon) = (cluster.Center.Latitude, cluster.Center.Longitude);
-                #region call 1 core city call
-                var coreCall = await GetPlacesAsync(
-                            cluster,
-                            lat,
-                            lon,
-                            token,
-                            10000,
-                            MapVariables.PrimaryTypes,
-                            BuildInterests(context.Interests)
-                            );
-                places.AddRange(coreCall
-                                .GroupBy(x => x.Name)
-                                .Select(x => x.First())
-                                .ToList());
-                //update thinking message with thinkingId
-                AttemptCall++;
-                #endregion
-            }
-
-            while (AttemptCall < maxAttemptCall)
-            {
-                var missingInterests = GetMissingInterests(places, context.Interests);
-                var missingTypes = GetMissingPrimaryTypes(places, context);
-                var interestCoverage = GetInterestCoverage(places, context.Interests);
-
-                if (interestCoverage >= 0.7 && !missingTypes.Any() && places.Count >= context.Days * 4)
-                {
-                    break;
-                }
-                var before = places.Count;
-                // foreach (var cluster in clusters)
-                // {
-                var randomCluster = clusters[Random.Next(0, clusters.Count - 1)];
-                var (lat, lon) = (randomCluster.Center.Latitude, randomCluster.Center.Longitude);
-                var (newLat, newLon) = GetRandomCenter(lat, lon, Random.Next(2, 11) * 1000);
-                var results = await GetPlacesAsync(
-                    randomCluster,
-                    newLat,
-                    newLon,
+                var places = await GetCorePlaces(
+                    cluster,
                     token,
-                    Random.Next(2, 11) * 5000,
-                    missingTypes.Any()
-                        ? missingTypes
-                        : MapVariables.PrimaryTravelTypes,
-                    consecutiveDuplicateCalls >= 2 ? BuildRandomInterests([]) : missingInterests.Any()
-                        ? BuildRandomInterests(missingInterests)
-                        : BuildRandomInterests(context.Interests)
-                );
+                    context);
 
-                places = places
-                        .Concat(results)
-                        .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                        .Select(g => g.First())
-                        .ToList();
-
-                if (places.Count == before)
-                {
-                    consecutiveDuplicateCalls++;
-                }
-
-                AttemptCall++;
+                clusterPlaces.Add(places);
             }
-            // }
-            return places;
+
+
+            for (int i = 0; i < clusters.Count; i++)
+            {
+                await FillCluster(
+                    clusters[i],
+                    clusterPlaces[i],
+                    token,
+                    context);
+            }
+
+
+            return clusterPlaces
+                .SelectMany(x => x)
+                .ToList();
+
         }
         catch (AppException ex)
         {
             throw new AppException(
                 "MAP_SERVICE_ERROR",
-                ex.ToString());
+                ex.Message);
         }
     }
-    private List<string> GetMissingPrimaryTypes(
-    List<Place> places,
+
+    private async Task<List<Place>> GetCorePlaces(
+    PlaceCluster cluster,
+    string token,
     TravelPromptContext context)
     {
-        var missing = new List<string>();
+        var result = new List<Place>();
 
-        var travelCount =
-            places.Count(x => x.Category == PlaceCategory.Travel);
-
-        var restaurantCount =
-            places.Count(x => x.Category == PlaceCategory.Restaurant);
-
-        var hotelCount =
-            places.Count(x => x.Category == PlaceCategory.Hotel);
-
-        // Capacity requirements
-        var requiredTravel = context.Days * 4; //50%
-        var requiredRestaurants = context.Days * 3; //37.5%
-        var requiredHotels = context.Days; //12.5%
-
-        if (travelCount < requiredTravel)
+        var types = new[]
         {
-            missing.AddRange(MapVariables.PrimaryTravelTypes);
+        MapVariables.PrimaryActtractionTypes,
+        MapVariables.PrimaryRestaurantTypes,
+    };
+
+
+        foreach (var type in types)
+        {
+            var places = await GetPlacesAsync(
+                cluster,
+                cluster.Center.Latitude,
+                cluster.Center.Longitude,
+                token,
+                50000,
+                type,
+                BuildInterests(context.Interests));
+
+
+            result = MergePlaces(result, places);
         }
 
-        if (restaurantCount < requiredRestaurants)
-        {
-            missing.AddRange(MapVariables.PrimaryRestaurantTypes);
-        }
 
-        if (hotelCount < requiredHotels)
-        {
-            missing.AddRange(MapVariables.PrimaryHotelTypes);
-        }
+        return result;
+    }
 
-        return missing
-            .Distinct()
+    private async Task FillCluster(
+    PlaceCluster cluster,
+    List<Place> places,
+    string token,
+    TravelPromptContext context)
+    {
+
+        var attempts = 0;
+
+
+        while (attempts < 5)
+        {
+
+            var missing = GetMissingCategories(places);
+
+
+            if (!missing.Any())
+                break;
+
+
+            foreach (var category in missing)
+            {
+
+                var types = category switch
+                {
+                    PlaceCategory.Hotel =>
+                        MapVariables.PrimaryHotelTypes,
+
+                    PlaceCategory.Restaurant =>
+                        MapVariables.PrimaryRestaurantTypes,
+
+                    _ =>
+                        MapVariables.PrimaryTravelTypes
+                };
+
+
+                var results = await GetPlacesAsync(
+                    cluster,
+                    cluster.Center.Latitude,
+                    cluster.Center.Longitude,
+                    token,
+                    GetRadius(category),
+                    types,
+                    BuildInterests(context.Interests));
+
+
+                places.AddRange(
+                    MergePlaces([], results)
+                );
+            }
+
+
+            attempts++;
+        }
+    }
+
+    private List<PlaceCategory> GetMissingCategories(
+    List<Place> places)
+    {
+        return ClusterMinimum
+            .Where(x =>
+                places.Count(p => p.Category == x.Key)
+                < x.Value)
+            .Select(x => x.Key)
             .ToList();
     }
 
-    private double GetInterestCoverage(
-    List<Place> places,
-    List<string> interests)
+    private int GetRadius(PlaceCategory category)
     {
-        if (interests == null || interests.Count == 0)
-            return 1.0;
-
-        var covered = interests.Count(interest =>
+        return category switch
         {
-            if (!MapVariables.InterestTypes.TryGetValue(interest, out var types))
-                return false;
+            PlaceCategory.Hotel => 20000,
 
-            return places.Any(place =>
-                place.Types.Any(type => types.Contains(type)));
-        });
+            PlaceCategory.Restaurant => 10000,
 
-        return (double)covered / interests.Count;
+            PlaceCategory.Travel => 15000,
+
+            _ => 10000
+        };
     }
 
-    private static (double Latitude, double Longitude) GetRandomCenter(
-        double latitude,
-        double longitude,
-        int maxRadiusMeters)
+    private static List<Place> MergePlaces(IReadOnlyCollection<Place> existingPlaces, IEnumerable<Place> newPlaces)
     {
-        const double EarthRadius = 6378137.0; // meters
+        var merged = new List<Place>(existingPlaces);
 
-        // Random distance (uniform over area)
-        var distance = Math.Sqrt(Random.NextDouble()) * maxRadiusMeters;
+        foreach (var place in newPlaces)
+        {
+            if (merged.Any(x => string.Equals(x.Name, place.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
 
-        // Random direction
-        var bearing = Random.NextDouble() * 2 * Math.PI;
+            merged.Add(place);
+        }
 
-        var latRad = latitude * Math.PI / 180.0;
-        var lonRad = longitude * Math.PI / 180.0;
-
-        var angularDistance = distance / EarthRadius;
-
-        var newLat = Math.Asin(
-            Math.Sin(latRad) * Math.Cos(angularDistance) +
-            Math.Cos(latRad) * Math.Sin(angularDistance) * Math.Cos(bearing));
-
-        var newLon = lonRad + Math.Atan2(
-            Math.Sin(bearing) * Math.Sin(angularDistance) * Math.Cos(latRad),
-            Math.Cos(angularDistance) -
-            Math.Sin(latRad) * Math.Sin(newLat));
-
-        return (
-            newLat * 180.0 / Math.PI,
-            newLon * 180.0 / Math.PI
-        );
+        return merged;
     }
     private async Task<List<Place>> GetPlacesAsync(
     PlaceCluster cluster,
@@ -271,29 +279,29 @@ public class MapService
         return result?.Places == null ? [] : MapResponse(result.Places, cluster);
     }
 
-    private List<string> GetMissingInterests(List<Place> places, List<string> interests)
-    {
-        var missingInterests = new List<string>();
-        foreach (var interest in interests)
-        {
-            var interestTypes =
-                MapVariables.InterestTypes[interest];
+    // private List<string> GetMissingInterests(List<Place> places, List<string> interests)
+    // {
+    //     var missingInterests = new List<string>();
+    //     foreach (var interest in interests)
+    //     {
+    //         var interestTypes =
+    //             MapVariables.InterestTypes[interest];
 
-            var count =
-                places.Count(p =>
-                    p.Types.Any(t => interestTypes.Contains(t)));
+    //         var count =
+    //             places.Count(p =>
+    //                 p.Types.Any(t => interestTypes.Contains(t)));
 
-            if (count == 0)
-            {
-                missingInterests.Add(interest);
-            }
-        }
-        return missingInterests;
-    }
+    //         if (count == 0)
+    //         {
+    //             missingInterests.Add(interest);
+    //         }
+    //     }
+    //     return missingInterests;
+    // }
 
     private static List<Place> MapResponse(List<GooglePlace> places, PlaceCluster? cluster)
     {
-        return places.Select(p => new Place
+        return [.. places.Select(p => new Place
         {
             Name = p.DisplayName?.Text ?? "",
             Address = p.FormattedAddress ?? "",
@@ -358,7 +366,7 @@ public class MapService
             ServesWine = p.ServesWine,
             Takeout = p.Takeout,
             PlaceCluster = cluster
-        }).ToList();
+        })];
     }
 
     private static PlaceCategory GetCategory(GooglePlace place)
@@ -396,46 +404,9 @@ public class MapService
     }
     private static readonly Random Random = new();
 
-    private static List<string> BuildRandomInterests(
-        IEnumerable<string>? interests,
-        int minPerGroup = 2,
-        int maxPerGroup = 4)
-    {
-        if (interests == null || !interests.Any())
-        {
-            return MapVariables.DefaultTypes
-                .OrderBy(_ => Random.Next())
-                .Take(50)
-                .ToList();
-        }
-
-        var result = new List<string>();
-
-        foreach (var interest in interests)
-        {
-            if (!MapVariables.InterestTypes.TryGetValue(interest, out var types))
-                continue;
-
-            var count = Math.Min(
-                Random.Next(minPerGroup, maxPerGroup + 1),
-                types.Length);
-
-            result.AddRange(
-                types
-                    .OrderBy(_ => Random.Next())
-                    .Take(count));
-        }
-
-        return result
-            .Distinct()
-            .OrderBy(_ => Random.Next())
-            .Take(50)
-            .ToList();
-    }
-
     private static List<Place> FilterInterestingPlaces(
     string country,
-    IEnumerable<Place> places,
+    List<Place> places,
     double keepPercentage = 0.8,
     int minimumKeep = 15)
     {
@@ -456,10 +427,7 @@ public class MapService
                 .ToList();
         }
 
-        var keep =
-            Math.Max(
-                minimumKeep,
-                (int)Math.Ceiling(ranked.Count * keepPercentage));
+        var keep = Math.Max(minimumKeep, (int)Math.Ceiling(ranked.Count * keepPercentage));
 
         return ranked
             .Take(keep)
@@ -488,25 +456,30 @@ public class MapService
         return weightedRating * popularity;
     }
 
-    public async Task<List<PlaceCluster>> GetLocations(string country, string location, int days)
+    public async Task<List<PlaceCluster>> GetLocations(
+    TravelSession session)
     {
+        var location = session.Context.Destination ?? throw new AppException(
+            "INSUFFICIENT_DATA",
+            "Destination is required for planning.");
+        var country = session.Context.Country ?? throw new AppException(
+            "INSUFFICIENT_DATA",
+            "Country is required for planning.");
+        var days = session.Context.Days ?? 1;
+
         var token = await GetAccessTokenAsync();
 
-        var request = new HttpRequestMessage(HttpMethod.Post, _searchTextUrl);
+        using var request = new HttpRequestMessage(HttpMethod.Post, _searchTextUrl);
 
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
         request.Headers.Add("X-Goog-FieldMask", MapVariables.GoogleMapFieldMaskLocations);
 
-        var body = new
+        request.Content = JsonContent.Create(new
         {
-            textQuery = location + "Travel actractions in " + country
-        };
-
-        request.Content = JsonContent.Create(body);
+            textQuery = $"{location} Travel attractions in {country}"
+        });
 
         var response = await _httpClient.SendAsync(request);
-
         var raw = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
@@ -517,56 +490,48 @@ public class MapService
         }
 
         var result = JsonSerializer.Deserialize<GooglePlacesResponse>(
-                raw,
-                new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+            raw,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        var mappedResult = result?.Places == null ? [] : MapResponse(result.Places, null);
+        var places = result?.Places == null ? [] : MapResponse(result.Places, null);
 
-        var prioritizedPlaces = FilterInterestingPlaces(country, mappedResult);
+        var prioritizedPlaces = FilterInterestingPlaces(country, places);
 
-        #region choose city
+        if (!prioritizedPlaces.Any())
+        {
+            throw new AppException(
+                "MAP_API_ERROR",
+                $"Google Places returned no places for '{location}, {country}'.");
+        }
+
         var clusters = new List<PlaceCluster>();
 
         foreach (var place in prioritizedPlaces)
         {
             var cluster = clusters.FirstOrDefault(c =>
-                c.Places.Any(p => 
-                _utils.Haversine(p.Location, place.Location) <= 100)); // 50 km
+                c.Places.Any(p => _utils.Haversine(p.Location, place.Location) <= 100));
 
             if (cluster == null)
             {
-                clusters.Add(new PlaceCluster
-                {
-                    Center = place.Location,
-                    Places = [place],
-                });
+                cluster = new PlaceCluster();
+                clusters.Add(cluster);
             }
-            else
-            {
-                cluster.Places.Add(place);
-
-                cluster.Center = new Altitude
-                {
-                    Latitude = cluster.Places.Average(x => x.Location.Latitude),
-                    Longitude = cluster.Places.Average(x => x.Location.Longitude)
-                };
-            }
+            cluster.Places.Add(place);
         }
 
-        // Randomly select a subset of clusters based on the number of days
-        var count = Math.Min(
-        Math.Max(1, (int)Math.Ceiling(days / 3.5)),
-        clusters.Count);
+        foreach (var cluster in clusters)
+        {
+            cluster.Places = await _scoringService.ScorePlaces(cluster.Places, session);
+            var center = cluster.Places.OrderByDescending(p => p.Score.TotalScore).First();
 
-        #endregion
+            cluster.Center = center.Location;
+        }
+
+        var clusterCount = Math.Min(clusters.Count, Math.Max(1, (int)Math.Ceiling(days / 3.5)));
+
         return clusters
             .OrderBy(_ => Random.Next())
-            .Take(count)
+            .Take(clusterCount)
             .ToList();
     }
-
-
 }

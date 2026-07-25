@@ -25,7 +25,7 @@ public sealed class TravelPlanningService
         }
         Task<TravelTime> weatherTask;
 
-        var clusters = await _mapService.GetLocations(session.Context.Country, session.Context.Destination, session.Context.Days ?? 1);
+        var clusters = await _mapService.GetLocations(session);
 
         if (session.Context.StartDate.HasValue && 
             session.Context.EndDate.HasValue)

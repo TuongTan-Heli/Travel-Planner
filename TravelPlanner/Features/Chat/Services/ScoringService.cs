@@ -14,38 +14,32 @@ public sealed class ScoringService
         _currencyExchangeService = currencyExchangeService;
         _utils = utils;
     }
-    public async Task<TravelResponse> ScorePlaces(
-    TravelResponse response,
+    public async Task<List<Place>> ScorePlaces(
+    List<Place> places,
     TravelSession session)
     {
         try
         {
             var weights = BuildWeights(session);
 
-            foreach (var place in response.TripPlanningData.RecommendedPlaces)
+            foreach (var place in places)
             {
-                place.Score = await ScorePlace(place, response, session, weights);
+                place.Score = await ScorePlace(place, session, weights);
             }
-
-            response.TripPlanningData.RecommendedPlaces =
-                response.TripPlanningData.RecommendedPlaces
-                    .OrderByDescending(p => p.Score.TotalScore)
-                    .ToList();
 
             session.Stage = TravelStage.SetupItinerary;
 
-            return response;
+            return places.OrderByDescending(p => p.Score.TotalScore).ToList(); 
         }
         catch (Exception ex)
         {
-           throw new AppException("SCRO_ERR","Error while scoring places", ex); 
+            throw new AppException("SCRO_ERR", "Error while scoring places", ex);
         }
 
     }
 
     private async Task<PlaceScore> ScorePlace(
     Place place,
-    TravelResponse response,
     TravelSession session,
     ScoreWeights weights)
     {
@@ -265,6 +259,11 @@ public sealed class ScoringService
     private double ScoreRoute(
     Place place)
     {
+        if (place.PlaceCluster?.Center is null)
+        {
+            return 1.0;
+        }
+
         double distance = _utils.Haversine(
                                 place.Location.Latitude,
                                 place.Location.Longitude,

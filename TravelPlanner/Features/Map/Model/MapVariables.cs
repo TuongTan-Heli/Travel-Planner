@@ -48,7 +48,13 @@ public static class MapVariables
             "places.rating," +
             "places.userRatingCount," +
             "places.addressComponents";
-
+    public static List<string> PrimaryActtractionTypes = [
+        "tourist_attraction",
+        "museum",
+        "national_park",
+        "scenic_spot",
+        "campground",
+    ];
     public static List<string> PrimaryTypes = [
         "tourist_attraction",
         "museum",

@@ -1,4 +1,4 @@
-import { APIProvider, Map, AdvancedMarker, InfoWindow } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, AdvancedMarker, InfoWindow, Pin } from '@vis.gl/react-google-maps';
 import type { Activity, Day, Place } from '../models/itinerary';
 import { useEffect, useState } from 'react';
 import { useAppSelector } from '../store/hooks';
@@ -57,6 +57,14 @@ export default function DayMap({ day }: { day: Day }) {
     );
   };
 
+  const openGoogleMaps = (lat: number, lon: number, name?: string) => {
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name || `${lat},${lon}`)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
   return (
     <APIProvider apiKey={apiKey}>
       <div className="day-map-shell">
@@ -68,22 +76,50 @@ export default function DayMap({ day }: { day: Day }) {
           gestureHandling={'greedy'}
           disableDefaultUI={false}
         >
-          {day.hotel && (
-            <AdvancedMarker
-              position={{ lat: day.hotel.location.latitude, lng: day.hotel.location.longitude }}
-              onClick={() => {
-                setSelectedActivity(day.hotel);
-              }}
-            />
-          )}
+          {day.hotel && (() => {
+            const lat = day.hotel.location.latitude;
+            const lon = day.hotel.location.longitude;
 
-          {activities.map((activity, index) => (
-            <AdvancedMarker
-              key={`${activity.place.placeId}-${index}`}
-              position={{ lat: activity.place.location.latitude, lng: activity.place.location.longitude }}
-              onClick={() => handleMarkerSelect(activity, index)}
-            />
-          ))}
+            return (
+              <AdvancedMarker
+                position={{ lat, lng: lon }}
+                onClick={() => {
+                  setSelectedActivity(day.hotel);
+                }}
+              >
+                <div>
+                  <Pin
+                    background="#0f9d58"
+                    borderColor="#006425"
+                    glyphColor="#60d98f"/>
+
+                  <button
+                    type="button"
+                    className="day-map-google-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openGoogleMaps(lat, lon, day.hotel?.name);
+                    }}
+                  >
+                    <span className="day-map-google-button-icon">🗺️</span>
+                    <span>Open in Google Maps</span>
+                  </button>
+                </div>
+              </AdvancedMarker>
+            );
+          })()}
+
+          {activities.map((activity, index) => {
+            const lat = activity.place.location.latitude;
+            const lon = activity.place.location.longitude;
+            return (
+              <AdvancedMarker
+                key={`${activity.place.placeId}-${index}`}
+                position={{ lat, lng: lon }}
+                onClick={() => handleMarkerSelect(activity, index)}
+              />
+            );
+          })}
 
           {selectedActivity && (
             <InfoWindow
@@ -102,7 +138,7 @@ export default function DayMap({ day }: { day: Day }) {
 
                 <div className="day-map-rating-row">
                   {renderRatingStars(selectedActivity.rating)}
-                  <span className="day-map-meta">· {selectedActivity.reviews?.length ?? 0} reviews</span>
+                  <span className="day-map-meta">· {selectedActivity.userRatingCount} reviews</span>
                 </div>
 
                 {selectedActivity.types?.length ? (
@@ -118,6 +154,18 @@ export default function DayMap({ day }: { day: Day }) {
                 {selectedActivity.description ? (
                   <p className="day-map-description">{selectedActivity.description}</p>
                 ) : null}
+
+                <button
+                  type="button"
+                  className="day-map-google-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openGoogleMaps(selectedActivity.location.latitude, selectedActivity.location.longitude, selectedActivity.name);
+                  }}
+                >
+                  <span className="day-map-google-button-icon">🗺️</span>
+                  <span>Open in Google Maps</span>
+                </button>
 
                 <div className="day-map-links">
                   {selectedActivity.phoneNumber ? (

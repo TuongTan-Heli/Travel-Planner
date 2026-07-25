@@ -102,91 +102,128 @@ public sealed class SetupItineraryService
         // Current location starts at hotel
         Place currentLocation = hotel;
 
-        //First breakfast, then fill with attraction -> lunch -> coffee -> dinner -> night travel
+        // Counters to enforce per-day limits
+        var attractionsCount = 0;
+        var coffeeCount = 0;
+        var restaurantCount = 0;
+
+        // First breakfast (or coffee)
         var breakfast = FindNearestRestaurant(
-                currentLocation,
-                remaining,
-                p => p.ServesBreakfast ?? false);
+            currentLocation,
+            remaining,
+            p => p.ServesBreakfast ?? false);
 
-        if (breakfast != null && AddStop(dayPlan, currentLocation, breakfast, StopType.Breakfast, ref hours, remaining))
+        if (breakfast != null)
         {
-            currentLocation = breakfast;
-        }
-
-        while (hours < MaxDailyHours)
-        {
-            var attraction = FindBestNearby(
-                    currentLocation,
-                    remaining,
-                    PlaceCategory.Travel);
-
-            if (attraction == null)
-                break;
-
-            if (!AddStop(dayPlan, currentLocation, attraction, StopType.Attraction, ref hours, remaining))
-                break;
-
-            currentLocation = attraction;
-
-
-            if (hours >= MaxDailyHours)
-                break;
-
-            if (hours >= 3 && !dayPlan.Stops.Any(x => x.Type == StopType.Lunch))
+            if (restaurantCount < 2 && AddStop(dayPlan, currentLocation, breakfast, StopType.Breakfast, ref hours, remaining))
             {
-                var lunch =
-                    FindNearestRestaurant(
-                        currentLocation,
-                        remaining,
-                        p => p.ServesLunch ?? false);
-
-                if (lunch != null)
-                {
-                    if (!AddStop(dayPlan, currentLocation, lunch, StopType.Lunch, ref hours, remaining))
-                        break;
-
-                    currentLocation = lunch;
-
-                }
+                currentLocation = breakfast;
+                restaurantCount++;
             }
-
-            if (!dayPlan.Stops.Any(x => x.Type == StopType.Coffee) && hours >= 2.5)
+        }
+        else
+        {
+            var firstCoffee = FindCoffee(currentLocation, remaining);
+            if (firstCoffee != null)
             {
-                var coffee = FindCoffee(currentLocation, remaining);
-
-                if (coffee != null)
+                if (coffeeCount < 2 && AddStop(dayPlan, currentLocation, firstCoffee, StopType.Coffee, ref hours, remaining))
                 {
-                    if (!AddStop(dayPlan, currentLocation, coffee, StopType.Coffee, ref hours, remaining))
-                        break;
-
-                    currentLocation = coffee;
-
+                    currentLocation = firstCoffee;
+                    coffeeCount++;
                 }
             }
         }
 
+        // Then attraction
+        var firstAttraction = FindBestNearby(currentLocation, remaining, PlaceCategory.Travel);
+        if (firstAttraction != null)
+        {
+            if (AddStop(dayPlan, currentLocation, firstAttraction, StopType.Attraction, ref hours, remaining))
+            {
+                currentLocation = firstAttraction;
+                attractionsCount++;
+            }
+        }
+
+        // Then lunch
+        var lunch = FindNearestRestaurant(currentLocation, remaining, p => p.ServesLunch ?? false);
+        if (lunch != null)
+        {
+            if (restaurantCount < 2 && AddStop(dayPlan, currentLocation, lunch, StopType.Lunch, ref hours, remaining))
+            {
+                currentLocation = lunch;
+                restaurantCount++;
+            }
+        }
+
+        // Then another attraction
+        var secondAttraction = FindBestNearby(currentLocation, remaining, PlaceCategory.Travel);
+        if (secondAttraction != null)
+        {
+            if (AddStop(dayPlan, currentLocation, secondAttraction, StopType.Attraction, ref hours, remaining))
+            {
+                currentLocation = secondAttraction;
+                attractionsCount++;
+            }
+        }
+
+        // Then dinner
         var dinner = FindNearestRestaurant(currentLocation, remaining, p => p.ServesDinner ?? false);
-
-        if (dinner != null && AddStop(dayPlan, currentLocation, dinner, StopType.Dinner, ref hours, remaining))
+        if (dinner != null)
         {
-            currentLocation = dinner;
+            if (restaurantCount < 2 && AddStop(dayPlan, currentLocation, dinner, StopType.Dinner, ref hours, remaining))
+            {
+                currentLocation = dinner;
+                restaurantCount++;
+            }
         }
 
-        var remainingTime = MaxDailyHours - hours;
-
-        if (remainingTime >= 0.75)
+        // Night travel (or coffee)
+        if (hours < MaxDailyHours)
         {
-            while (hours < MaxDailyHours)
+            var night = FindEveningPlace(currentLocation, remaining) ?? FindCoffee(currentLocation, remaining);
+            if (night != null)
             {
-                var leisure = FindEveningPlace(currentLocation, remaining);
+                var type = MapVariables.EveningTypes.Any(t => night.PrimaryType?.Contains(t, StringComparison.OrdinalIgnoreCase) == true)
+                    ? StopType.FreeTime
+                    : StopType.Coffee;
 
-                if (leisure == null)
-                    break;
+                // choose appropriate stop type if it's clearly a coffee place
+                if (night.PrimaryType != null && (night.PrimaryType.Contains("cafe", StringComparison.OrdinalIgnoreCase) || night.PrimaryType.Contains("coffee", StringComparison.OrdinalIgnoreCase)))
+                {
+                    type = StopType.Coffee;
+                }
 
-                if (!AddStop(dayPlan, currentLocation, leisure, StopType.FreeTime, ref hours, remaining))
-                    break;
+                // enforce coffee/restaurant caps
+                if (type == StopType.Coffee)
+                {
+                    if (coffeeCount < 2)
+                    {
+                        if (AddStop(dayPlan, currentLocation, night, type, ref hours, remaining))
+                            coffeeCount++;
+                    }
+                }
+                else if (type == StopType.FreeTime)
+                {
+                    AddStop(dayPlan, currentLocation, night, type, ref hours, remaining);
+                }
+            }
+        }
 
-                currentLocation = leisure;
+        // Ensure each day contains at least 2 attractions if time and remaining allow
+        while (attractionsCount < 2 && hours < MaxDailyHours)
+        {
+            var extraAttraction = FindBestNearby(currentLocation, remaining, PlaceCategory.Travel);
+            if (extraAttraction == null) break;
+
+            if (AddStop(dayPlan, currentLocation, extraAttraction, StopType.Attraction, ref hours, remaining))
+            {
+                attractionsCount++;
+                currentLocation = extraAttraction;
+            }
+            else
+            {
+                break; // no more time
             }
         }
 
@@ -199,6 +236,7 @@ public sealed class SetupItineraryService
     {
         return remaining
         .Where(x => x.Category != PlaceCategory.Hotel)
+        .Where(x => !IsFoodRelatedPlace(x))
         .Where(x => MapVariables.EveningTypes.Contains(x.PrimaryType))
         .OrderBy(x => DistanceKm(center, x))
         .ThenByDescending(x => x.Score.TotalScore)
@@ -232,6 +270,7 @@ public sealed class SetupItineraryService
     {
         return remaining
             .Where(x => x.Category == category)
+            .Where(x => !IsFoodRelatedPlace(x))
             .Where(x => DistanceKm(center, x) <= ClusterRadiusKm)
             .OrderByDescending(x => x.Score.TotalScore - DistanceKm(center, x) * 0.25)
             .FirstOrDefault();
@@ -256,6 +295,26 @@ public sealed class SetupItineraryService
             .OrderBy(x => DistanceKm(center, x))
             .ThenByDescending(x => x.Score.TotalScore)
             .FirstOrDefault();
+    }
+
+    private bool IsFoodRelatedPlace(Place place)
+    {
+        if (place is null)
+        {
+            return false;
+        }
+
+        var foodTypes = MapVariables.InterestTypes["food"]
+            .Concat(MapVariables.PrimaryRestaurantTypes)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(place.PrimaryType) && foodTypes.Contains(place.PrimaryType))
+        {
+            return true;
+        }
+
+        return place.Types?.Any(type => foodTypes.Contains(type)) ?? false;
     }
 
     private double EstimatedTravelTime(Place from, Place to)
