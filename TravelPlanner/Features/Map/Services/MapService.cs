@@ -114,7 +114,7 @@ public class MapService
                 token,
                 50000,
                 type,
-                BuildInterests(context.Interests));
+                []);
 
 
             result = MergePlaces(result, places);
@@ -167,9 +167,7 @@ public class MapService
                     token,
                     GetRadius(category),
                     types,
-                    BuildInterests(context.Interests));
-
-
+                    category == PlaceCategory.Travel ? BuildInterests(context.Interests) : []);
                 places.AddRange(
                     MergePlaces([], results)
                 );
@@ -195,11 +193,11 @@ public class MapService
     {
         return category switch
         {
-            PlaceCategory.Hotel => 20000,
+            PlaceCategory.Hotel => Random.Next(1, 10) * 2000,
 
-            PlaceCategory.Restaurant => 10000,
+            PlaceCategory.Restaurant => Random.Next(1, 15) * 2000,
 
-            PlaceCategory.Travel => 15000,
+            PlaceCategory.Travel => Random.Next(1, 25) * 2000,
 
             _ => 10000
         };
@@ -279,26 +277,6 @@ public class MapService
         return result?.Places == null ? [] : MapResponse(result.Places, cluster);
     }
 
-    // private List<string> GetMissingInterests(List<Place> places, List<string> interests)
-    // {
-    //     var missingInterests = new List<string>();
-    //     foreach (var interest in interests)
-    //     {
-    //         var interestTypes =
-    //             MapVariables.InterestTypes[interest];
-
-    //         var count =
-    //             places.Count(p =>
-    //                 p.Types.Any(t => interestTypes.Contains(t)));
-
-    //         if (count == 0)
-    //         {
-    //             missingInterests.Add(interest);
-    //         }
-    //     }
-    //     return missingInterests;
-    // }
-
     private static List<Place> MapResponse(List<GooglePlace> places, PlaceCluster? cluster)
     {
         return [.. places.Select(p => new Place
@@ -313,7 +291,7 @@ public class MapService
                     ?? [],
             PrimaryType = p.PrimaryType,
             Types = p.Types ?? [],
-            Rating = (int)Math.Round(p.Rating ?? 0),
+            Rating = p.Rating ?? 0,
             UserRatingCount = p.UserRatingCount ?? 0,
             OpenTime = p.CurrentOpeningHours?.WeekDayDescriptions ?? [],
             PriceLevel = p.PriceLevel ?? "",

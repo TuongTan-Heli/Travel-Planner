@@ -17,7 +17,7 @@ public class Place
 
     public List<string> Types { get; init; } = [];
 
-    public int Rating { get; init; }
+    public double Rating { get; init; }
 
     public int UserRatingCount { get; init; }
 

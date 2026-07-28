@@ -120,11 +120,11 @@ public class PromptTemplate
             {
                 day.DayNumber,
                 Hotel = day.Hotel == null ? null : new
-                    {
-                        PlaceId = BuildPlaceId(day.Hotel),
-                        Name = day.Hotel.Name,
-                        Address = day.Hotel.Address
-                    },
+                {
+                    PlaceId = BuildPlaceId(day.Hotel),
+                    Name = day.Hotel.Name,
+                    Address = day.Hotel.Address
+                },
 
                 Activities = day.Stops.Select(stop => new
                 {
@@ -253,17 +253,6 @@ public class PromptTemplate
                             "longitude": "number"
                             }
                         },
-
-                        "alternatives": [
-                            {
-                            "whyVisit": "string",
-                            "place": {
-                                "placeId": "string",
-                                "name": "string",
-                                "address": "string"
-                            }
-                            }
-                        ]
                         }
                     ]
                     }
@@ -299,7 +288,6 @@ public class PromptTemplate
                 - tips
                 - description
                 - whyVisit
-                - alternatives
 
                 TravelTime:
                 - copy from source if available.
