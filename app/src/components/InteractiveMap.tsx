@@ -1,8 +1,7 @@
 import '../styles/InteractiveMap.css';
-import type { Itinerary } from '../models/itinerary';
+import type { Itinerary, SelectedStop } from '../models/itinerary';
 import { useAppSelector } from '../store/hooks';
 import DayMap from './dayMap';
-import { SelectedStop } from './stopCard';
 
 interface InteractiveMapProps {
   onStopSelect?: (stop: SelectedStop | null) => void;
@@ -20,7 +19,7 @@ export default function InteractiveMap({onStopSelect} : InteractiveMapProps) {
       <div className="map-frame">
         <div>
           {activeDay ? (
-            <DayMap key={activeDay.dayNumber} day={activeDay} onStopSelect={onStopSelect}/>
+            <DayMap day={activeDay} onStopSelect={onStopSelect}/>
           ) : (<div/>)}
         </div>
       </div>

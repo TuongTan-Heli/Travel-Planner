@@ -3,7 +3,6 @@
 //get Final plan
 
 using System.Text.Json;
-using TravelPlanner.Features.Chat.Models;
 
 public class PromptBuilder
 {

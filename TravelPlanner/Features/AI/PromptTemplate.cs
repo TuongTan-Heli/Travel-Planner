@@ -122,8 +122,9 @@ public class PromptTemplate
                 Hotel = day.Hotel == null ? null : new
                 {
                     PlaceId = BuildPlaceId(day.Hotel),
-                    Name = day.Hotel.Name,
-                    Address = day.Hotel.Address
+                    PlaceName = day.Hotel.Name,
+                    Address = day.Hotel.Address,
+                    PrimaryType = day.Hotel.PrimaryType
                 },
 
                 Activities = day.Stops.Select(stop => new
@@ -218,16 +219,28 @@ public class PromptTemplate
                     "tips": ["string"],
 
                     "hotel": {
-                        "placeId": "string",
-                        "name": "string",
-                        "address": "string",
-                        "primaryType": "string",
-                        "category": "string",
-                        "rating": "number|null",
-                        "location": {
-                        "latitude": "number",
-                        "longitude": "number"
-                        }
+                        "type": "Breakfast | Attraction | Lunch | Coffee | Dinner | FreeTime",
+
+                        "description": "string",
+                        "whyVisit": "string",
+
+                        "stopType": "string",
+                        "durationHours": "number",
+                        "travelMinutesFromPrevious": "number",
+
+                        "place": {
+                            "placeId": "string",
+                            "name": "string",
+                            "address": "string",
+                            "primaryType": "string",
+                            "category": "string",
+                            "rating": "number|null",
+                            "location": {
+                            "latitude": "number",
+                            "longitude": "number"
+                            }
+                        },
+                        
                     },
 
                     "activities": [

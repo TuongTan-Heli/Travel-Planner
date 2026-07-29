@@ -1,8 +1,7 @@
 import { Map, AdvancedMarker, InfoWindow, Pin, useMap, useMapsLibrary, } from '@vis.gl/react-google-maps';
 import { useEffect, useState } from 'react';
-import type { Activity, Day, Place, } from '../models/itinerary';
+import type { Activity, Day, Place, SelectedStop, } from '../models/itinerary';
 import { useAppSelector } from '../store/hooks';
-import type { SelectedStop } from './stopCard';
 
 import '../styles/dayMap.css';
 
@@ -17,10 +16,20 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
 
     const activeDayIndex = useAppSelector((state) => state.itinerary.activeDayIndex);
 
-    const [selectedActivity, setSelectedActivity] = useState<Place | null>(null);
+    const [selectedStop, setSelectedStop] = useState<SelectedStop | null>(null);
+
+    const createStop = (
+        activity: Activity,
+        label?: string
+    ): SelectedStop => ({
+        place: activity.place,
+        label,
+        dayNumber: day.dayNumber,
+        stop: activity
+    });
 
     useEffect(() => {
-        setSelectedActivity(null);
+        setSelectedStop(null);
     }, [day.dayNumber]);
 
     useEffect(() => {
@@ -31,7 +40,7 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
 
         const renderer = new routesLibrary.DirectionsRenderer({ map, suppressMarkers: true, });
 
-        const origin = day.hotel ? { lat: day.hotel.location.latitude, lng: day.hotel.location.longitude, }
+        const origin = day.hotel ? { lat: day.hotel.place.location.latitude, lng: day.hotel.place.location.longitude, }
             : { lat: day.activities[0].place.location.latitude, lng: day.activities[0].place.location.longitude, };
 
         const destination = { lat: day.activities.at(-1)!.place.location.latitude, lng: day.activities.at(-1)!.place.location.longitude, };
@@ -58,18 +67,24 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
         );
 
         return () => renderer.setMap(null);
-    }, [map, routesLibrary, day]);
+    }, [map, routesLibrary, day.dayNumber]);
 
     const activities = day.activities ?? [];
 
     const handleMarkerSelect = (activity: Activity) => {
-        setSelectedActivity(activity.place);
-        onStopSelect?.({ place: activity.place, label: activity.type, dayNumber: day.dayNumber, activity: activity });
+        const stop: SelectedStop = {
+            place: activity.place,
+            label: activity.type,
+            dayNumber: day.dayNumber,
+            stop: activity
+        };
+
+        setSelectedStop(stop);
+        onStopSelect?.(stop);
     };
 
     const renderRatingStars = (rating?: number | null) => {
-        const safeRating =
-            typeof rating === 'number' && Number.isFinite(rating) ? rating : 0;
+        const safeRating = typeof rating === 'number' && Number.isFinite(rating) ? rating : 0;
 
         return (
             <div className="day-map-rating-row">
@@ -112,16 +127,19 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
             <Map
                 mapId={`${day.dayNumber}-${activeDayIndex}`}
                 style={{ width: '100%', height: '500px', }}
-                defaultCenter={{ lat: day.hotel?.location.latitude ?? 0, lng: day.hotel?.location.longitude ?? 0, }}
+                defaultCenter={{ lat: day.hotel?.place.location.latitude ?? 0, lng: day.hotel?.place.location.longitude ?? 0, }}
                 defaultZoom={10}
                 gestureHandling="greedy">
-                {day.hotel && (
+                {!selectedStop && day.hotel && (
                     <AdvancedMarker
-                        position={{ lat: day.hotel.location.latitude, lng: day.hotel.location.longitude, }}
+                        position={{ lat: day.hotel.place.location.latitude, lng: day.hotel.place.location.longitude, }}
                         onClick={() => {
                             if (!day.hotel) return;
-                            setSelectedActivity(day.hotel);
-                            onStopSelect?.({ place: day.hotel, label: 'Hotel', dayNumber: day.dayNumber });
+
+                            const stop = createStop(day.hotel, "Hotel");
+
+                            setSelectedStop(stop);
+                            onStopSelect?.(stop);
                         }} >
                         <div>
                             <Pin background="#0f9d58"
@@ -133,50 +151,104 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     openGoogleMaps(
-                                        day.hotel!.location.latitude,
-                                        day.hotel!.location.longitude,
-                                        day.hotel!.name);
+                                        day.hotel!.place.location.latitude,
+                                        day.hotel!.place.location.longitude,
+                                        day.hotel!.place.name);
                                 }} >
                                 🗺️ Open in Google Maps
                             </button>
                         </div>
                     </AdvancedMarker>
                 )}
-
-                {activities.map((activity, index) => (
+                {selectedStop === null && activities.map((activity, index) => (
                     <AdvancedMarker
                         key={`${activity.place.placeId}-${index}`}
-                        position={{ lat: activity.place.location.latitude, lng: activity.place.location.longitude, }}
-                        onClick={() => handleMarkerSelect(activity)} />
+                        position={{
+                            lat: activity.place.location.latitude,
+                            lng: activity.place.location.longitude
+                        }}
+                        onClick={() => {
+                            handleMarkerSelect(activity);
+                        }}
+                    >
+                        <Pin
+                            background="#4285F4"
+                            borderColor="#1a73e8"
+                            glyphColor="#fff"
+                        />
+                    </AdvancedMarker>
+
                 ))}
 
-                {selectedActivity && (
+                {selectedStop && (
+                    <AdvancedMarker
+                        position={{
+                            lat: selectedStop.place.location.latitude,
+                            lng: selectedStop.place.location.longitude
+                        }} >
+                        <Pin
+                            background="#ea4335"
+                            borderColor="#b31412"
+                            glyphColor="#fff"
+                        />
+                    </AdvancedMarker>
+                )}
+
+                {selectedStop?.stop.alternatives.map((alternative: Place) => (
+                    <AdvancedMarker
+                        key={alternative.placeId}
+                        position={{
+                            lat: alternative.location.latitude,
+                            lng: alternative.location.longitude
+                        }}
+                        onClick={() => {
+                            const stop: SelectedStop = {
+                                place: alternative,
+                                label: "Alternative",
+                                dayNumber: day.dayNumber,
+
+                                // keep original alternatives
+                                stop: selectedStop.stop
+                            };
+
+                            setSelectedStop(stop);
+                            onStopSelect?.(stop);
+                        }} >
+                        <Pin
+                            background="#4285F4"
+                            borderColor="#1a73e8"
+                            glyphColor="#fff"
+                        />
+                    </AdvancedMarker>
+                ))}
+
+                {selectedStop && (
                     <InfoWindow
-                        position={{ lat: selectedActivity.location.latitude, lng: selectedActivity.location.longitude, }}
-                        onCloseClick={() => { setSelectedActivity(null); onStopSelect?.(null) }} >
+                        position={{ lat: selectedStop.place.location.latitude, lng: selectedStop.place.location.longitude, }}
+                        onCloseClick={() => { setSelectedStop(null); onStopSelect?.(null) }} >
                         <div className="day-map-info-window">
                             <h3 className="day-map-title">
-                                {selectedActivity.name}
+                                {selectedStop.place.name}
                             </h3>
 
                             <p className="day-map-address">
-                                {selectedActivity.address}
+                                {selectedStop.place.address}
                             </p>
 
-                            {renderRatingStars(selectedActivity.rating)}
+                            {renderRatingStars(selectedStop.place.rating)}
                             {
-                                selectedActivity.userRatingCount != 0 &&
+                                selectedStop.place.userRatingCount != 0 &&
                                 <span className="day-map-meta">
-                                    · {selectedActivity.userRatingCount} reviews
+                                    · {selectedStop.place.userRatingCount} reviews
                                 </span>
                             }
 
 
-                            {!!selectedActivity.types?.length && (
+                            {selectedStop.place.types?.length && (
                                 <div className="day-map-tags">
-                                    {selectedActivity.types
+                                    {selectedStop.place.types
                                         .slice(0, 4)
-                                        .map((type) => (
+                                        .map((type: string) => (
                                             <span key={type} className="day-map-tag" >
                                                 {type}
                                             </span>
@@ -184,31 +256,31 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
                                 </div>
                             )}
 
-                            {selectedActivity.description && (
+                            {selectedStop.place.description && (
                                 <p className="day-map-description">
-                                    {selectedActivity.description}
+                                    {selectedStop.place.description}
                                 </p>
                             )}
 
                             <button
                                 className="day-map-google-button"
                                 onClick={() => openGoogleMaps(
-                                    selectedActivity.location.latitude,
-                                    selectedActivity.location.longitude,
-                                    selectedActivity.name)}>
+                                    selectedStop.place.location.latitude,
+                                    selectedStop.place.location.longitude,
+                                    selectedStop.place.name)}>
                                 🗺️ Open in Google Maps
                             </button>
 
                             <div className="day-map-links">
-                                {selectedActivity.phoneNumber && (
-                                    <a className="day-map-link" href={`tel:${selectedActivity.phoneNumber}`} >
-                                        📞 {selectedActivity.phoneNumber}
+                                {selectedStop.place.phoneNumber && (
+                                    <a className="day-map-link" href={`tel:${selectedStop.place.phoneNumber}`} >
+                                        📞 {selectedStop.place.phoneNumber}
                                     </a>
                                 )}
 
-                                {selectedActivity.websiteUrl && (
+                                {selectedStop.place.websiteUrl && (
                                     <a className="day-map-link"
-                                        href={selectedActivity.websiteUrl}
+                                        href={selectedStop.place.websiteUrl}
                                         target="_blank"
                                         rel="noreferrer" >
                                         🌐 Website

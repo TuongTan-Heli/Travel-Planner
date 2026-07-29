@@ -1,7 +1,6 @@
 import { APIProvider } from '@vis.gl/react-google-maps';
-import type { Day } from '../models/itinerary';
+import type { Day, SelectedStop } from '../models/itinerary';
 import DayMapContent from '../components/dayMapContent';
-import type { SelectedStop } from './stopCard';
 
 import '../styles/dayMap.css';
 

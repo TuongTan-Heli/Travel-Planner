@@ -3,7 +3,6 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using TravelPlanner.Features.Chat.Models;
 
 namespace TravelPlanner.Features.Chat.Services;
 
@@ -11,8 +10,11 @@ public sealed class ChatWebSocketService
 {
     private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
     };
+    private static readonly string THINKING_ID = "Thinking";
+    private static readonly string STATE_ID = "STATE";
     private readonly ConcurrentDictionary<WebSocket, object> _sockets = new();
     private readonly WebSocketNotifier _webSocketNotifier;
     private readonly IntentExtractionService _intentExtractionService;
@@ -101,45 +103,26 @@ public sealed class ChatWebSocketService
         socket.Dispose();
     }
 
-    // private async Task SendHistoryAsync(WebSocket socket)
-    // {
-    //     List<ChatMessage> history;
-    //     lock (_historyLock)
-    //     {
-    //         history = _recentMessages.ToList();
-    //     }
-
-    //     foreach (var message in history)
-    //     {
-    //         await SendMessageAsync(socket, message);
-    //     }
-    // }
-
     #endregion
-    private async Task BroadcastMessageAsync(WebSocket socket, ChatMessage message)
+    private async Task BroadcastAsync(
+    WebSocket socket,
+    WebSocketMessage message)
     {
-        var payload = JsonSerializer.Serialize(message, SerializerOptions);
+        var payload = JsonSerializer.Serialize(
+            message,
+            message.GetType(),
+            SerializerOptions
+        );
+
         var bytes = Encoding.UTF8.GetBytes(payload);
-        var buffer = new ArraySegment<byte>(bytes);
 
-        if (socket.State != WebSocketState.Open)
-        {
-            _sockets.TryRemove(socket, out _);
-            await CloseSocketAsync(socket);
-            return;
-        }
-
-        try
-        {
-            await socket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
-        }
-        catch
-        {
-            _sockets.TryRemove(socket, out _);
-            await CloseSocketAsync(socket);
-        }
+        await socket.SendAsync(
+            bytes,
+            WebSocketMessageType.Text,
+            true,
+            CancellationToken.None
+        );
     }
-
 
     public async Task HandleIncomingMessageAsync(WebSocket socket, string messageJson)
     {
@@ -152,7 +135,7 @@ public sealed class ChatWebSocketService
         ChatMessageInput? input;
         try
         {
-            input = JsonSerializer.Deserialize<ChatMessageInput>(messageJson, 
+            input = JsonSerializer.Deserialize<ChatMessageInput>(messageJson,
             new JsonSerializerOptions
             {
                 WriteIndented = true,
@@ -175,9 +158,10 @@ public sealed class ChatWebSocketService
         var travelResponse = new TravelResponse();
         var broadcastMessage = new ChatMessage
         {
+            Type = WebSocketMessType.Chat,
             Id = string.IsNullOrWhiteSpace(input.Id) ? Guid.NewGuid().ToString() : input.Id,
             Text = input.Text,
-            Type = ChatMessageType.Outgoing,
+            ChatType = ChatMessageType.Outgoing,
             Sender = "User",
             Timestamp = DateTime.UtcNow.ToString("o"),
             Thinking = false
@@ -185,8 +169,8 @@ public sealed class ChatWebSocketService
 
         // AddToHistory(broadcastMessage);
         #region Gather necessary travel information for intent extraction
-        await BroadcastMessageAsync(socket, broadcastMessage);
-
+        await BroadcastAsync(socket, broadcastMessage);
+        await SendStateAsync(socket, true, "AI is analyzing your travel preferences");
         try
         {
             if (session.Stage == TravelStage.IntentExtraction)
@@ -199,45 +183,53 @@ public sealed class ChatWebSocketService
 
                 var extractionResult = await extractionTask;
 
-                await animationTask;
-
                 var reply = new ChatMessage
                 {
+                    Type = WebSocketMessType.Chat,
                     Id = thinkingId,
                     Text = extractionResult.Message,
-                    Type = ChatMessageType.Incoming,
+                    ChatType = ChatMessageType.Incoming,
                     Sender = "Bot",
                     Timestamp = DateTime.UtcNow.ToString("o"),
                     Thinking = false
                 };
 
+                await animationTask;
+
                 // AddToHistory(reply);
-                await BroadcastMessageAsync(socket, reply);
+                await BroadcastAsync(socket, reply);
+                await SendStateAsync(socket, false, "");
+
                 #endregion
             }
 
 
             if (session.Stage == TravelStage.LocationSelection)
             {
+                await SendStateAsync(socket, true, "Selecting best location");
                 travelResponse.TripPlanningData = await _travelPlanningService.BuildPlanningDataAsync(session);
             }
 
             if (session.Stage == TravelStage.Scoring)
             {
+                await SendStateAsync(socket, true, "Scoring places");
                 travelResponse.TripPlanningData.RecommendedPlaces = await _scoringService.ScorePlaces(travelResponse.TripPlanningData.RecommendedPlaces, session);
             }
 
             if (session.Stage == TravelStage.SetupItinerary)
             {
+                await SendStateAsync(socket, true, "Setting up your trip");
                 travelResponse.Itinerary = await _setupItineraryService.Setup(travelResponse, session);
             }
 
             if (session.Stage == TravelStage.FinalPresentation)
             {
+                await SendStateAsync(socket, true, "Preparing final presentation");
                 travelResponse.FinalPresentation = await _presentationService.Present(travelResponse, session);
 
                 var reply = new ChatMessage
                 {
+                    Type = WebSocketMessType.Chat,
                     Id = "Presentation",
                     Text = JsonSerializer.Serialize(
                         travelResponse.FinalPresentation,
@@ -246,14 +238,17 @@ public sealed class ChatWebSocketService
                             WriteIndented = true,
                             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                         }),
-                    Type = ChatMessageType.Incoming,
+                    ChatType = ChatMessageType.Incoming,
                     Sender = "Bot",
                     Timestamp = DateTime.UtcNow.ToString("o"),
                     Thinking = false
                 };
 
-                await BroadcastMessageAsync(socket, reply);
+                await BroadcastAsync(socket, reply);
+                await SendStateAsync(socket, false, "");
+
                 session.Stage = TravelStage.IntentExtraction;
+
             }
             // AddToHistory(reply);
 
@@ -263,6 +258,21 @@ public sealed class ChatWebSocketService
             await _webSocketNotifier.SendErrorAsync(socket, ex.Code, ex.Message);
         }
     }
+
+    private async Task SendStateAsync(
+    WebSocket socket,
+    bool processing,
+    string message)
+    {
+        await BroadcastAsync(socket, new SystemStateMessage
+        {
+            Id = STATE_ID,
+            Type = WebSocketMessType.State,
+            Message = message,
+            Processing = processing
+        });
+    }
+
     private async Task RunThinkingAnimationAsync(WebSocket socket, string thinkingId, Task stopSignal)
     {
         var dots = new[] { "", ".", "..", "...", "..", "." };
@@ -273,14 +283,14 @@ public sealed class ChatWebSocketService
             var thinkingMessage = new ChatMessage
             {
                 Id = thinkingId,
+                Type = WebSocketMessType.Chat,
                 Text = "thinking" + dots[index],
-                Type = ChatMessageType.Incoming,
+                ChatType = ChatMessageType.Incoming,
                 Sender = "Bot",
-                Timestamp = DateTime.UtcNow.ToString("o"),
                 Thinking = true
             };
 
-            await BroadcastMessageAsync(socket, thinkingMessage);
+            await BroadcastAsync(socket, thinkingMessage);
 
             index = (index + 1) % dots.Length;
             await Task.Delay(600);

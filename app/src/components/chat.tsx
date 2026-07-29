@@ -1,9 +1,11 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import '../styles/chat.css';
 import TypeWriter from './TypeWriter';
 import { useAppDispatch } from '../store/hooks';
 import { setPresentationData } from '../store/itinerarySlice';
+import { setSystemState } from '../store/systemSlice';
 import { Itinerary } from '../models/itinerary';
+import { WebSocketMessage } from '../models/websocket';
 
 // Simple UUID generator
 const Guid = {
@@ -37,6 +39,64 @@ export default function Chat() {
   const socketRef = useRef<WebSocket | null>(null);
   const dispatch = useAppDispatch();
 
+  const handleChatMessage = useCallback(
+    (message: WebSocketMessage) => {
+
+      if (message.kind !== "Chat") {
+        return;
+      }
+      console.log("CHAT MESSAGE RECEIVED:", message);
+
+      if (message.id === "Presentation") {
+
+        try {
+          const parsed = JSON.parse(message.text) as Itinerary;
+
+          dispatch(setPresentationData(parsed));
+
+          return;
+
+        } catch {
+          console.error("Invalid presentation JSON");
+          return;
+        }
+      }
+
+
+      const chatMessage: ChatMessage = {
+        id: message.id,
+        text: message.text,
+        type:
+          message.chatType === "Outgoing"
+            ? "outgoing"
+            : "incoming",
+        sender: message.sender,
+        timestamp: message.timestamp,
+        thinking: message.thinking
+      };
+
+
+      setMessages(prev => {
+
+        const existing = prev.findIndex(
+          x => x.id === chatMessage.id
+        );
+
+        if (existing !== -1) {
+          const updated = [...prev];
+          updated[existing] = chatMessage;
+          return updated;
+        }
+
+
+        return [...prev, chatMessage];
+
+      });
+
+    },
+    [dispatch]
+  );
+
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const websocketUrl = `${protocol}://localhost:5223/ws/chat`;
@@ -47,39 +107,28 @@ export default function Chat() {
       setError(null);
     };
 
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data) as ChatMessage;
-        if (message.id === "error") {
-          setError(message.text);
-          return;
-        }
+    socket.onmessage = event => {
+      const message = JSON.parse(event.data) as WebSocketMessage;
 
-        if (message.id === "Presentation") {
-          let parsed: Itinerary;
-          try {
-            parsed = JSON.parse(message.text) as Itinerary;
-            console.log("Parsed presentation data:", parsed);
-          } catch {
-            console.error("Invalid presentation JSON");
-            return;
-          }
-          dispatch(setPresentationData(parsed));
-          return;
-        }
+      switch (message.kind) {
+        case "State":
+          dispatch(
+            setSystemState({
+              message: message.message,
+              processing: message.processing
+            })
+          );
+          break;
 
-        setMessages((prev) => {
-          const index = prev.findIndex((m) => m.id === message.id);
-          if (index !== -1) {
-            const next = [...prev];
-            next[index] = message;
-            return next;
-          }
-          return [...prev, message];
-        });
-      } catch (error) {
-        console.error('Failed to parse message:', error);
+        case "Chat":
+          handleChatMessage(message);
+          break;
+
+        case "Error":
+          setError(message.message);
+          break;
       }
+
     };
 
     socket.onclose = () => {
@@ -95,7 +144,7 @@ export default function Chat() {
     return () => {
       socket.close();
     };
-  }, []);
+  }, [dispatch, handleChatMessage]);
 
   const sendMessage = (text: string) => {
     const socket = socketRef.current;

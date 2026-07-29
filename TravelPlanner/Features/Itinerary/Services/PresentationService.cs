@@ -2,14 +2,17 @@ using TravelPlanner.Features.Chat.Services;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using TravelPlanner;
 
 public class PresentationService
 {
     private readonly ChatService _chatService;
+    private readonly Utils _utils;
 
-    public PresentationService(ChatService chatService)
+    public PresentationService(ChatService chatService, Utils utils)
     {
         _chatService = chatService;
+        _utils = utils;
     }
     public async Task<FinalPresentation> Present(TravelResponse response, TravelSession session)
     {
@@ -35,11 +38,14 @@ public class PresentationService
                     "PRESENTATION_PARSE_ERROR",
                     "Failed to parse final presentation result.");
 
+
             result.CandidatePlaces = response.TripPlanningData.RecommendedPlaces
                 .GroupBy(BuildPlaceId)
                 .Select(x => x.First())
                 .Select(MapPlace)
                 .ToList();
+
+            BuildAlternatives(result);
 
             HydratePlaces(result, response);
 
@@ -47,12 +53,25 @@ public class PresentationService
         }
         catch (JsonException ex)
         {
-            Console.WriteLine(ex.Path);
-            Console.WriteLine(ex.LineNumber);
-            Console.WriteLine(ex.BytePositionInLine);
-            Console.WriteLine(ex.Message);
+            throw new AppException(
+        "PRESENTATION_PARSE_ERROR",
+        $"""
+        Failed to deserialize FinalPresentation.
 
-            throw;
+        Error: {ex.Message}
+        Path: {ex.Path}
+        Line: {ex.LineNumber}
+        Byte Position: {ex.BytePositionInLine}
+
+        JSON:
+        {cleanedJson}
+        """);
+        }
+        catch (Exception ex)
+        {
+            throw new AppException(
+                "PRESENTATION_PARSE_ERROR",
+                $"Unexpected deserialization error: {ex}");
         }
 
     }
@@ -75,10 +94,10 @@ public class PresentationService
                 Latitude = place.Location.Latitude,
                 Longitude = place.Location.Longitude
             },
-            Types = place.Types,
+            Types = [.. place.Types],
+            OpenTime = [.. place.OpenTime],
+            Reviews = [.. place.Reviews],
             PriceRange = place.PriceRange,
-            Reviews = place.Reviews,
-            OpenTime = place.OpenTime,
             PhoneNumber = place.PhoneNumber,
             WebsiteUrl = place.WebsiteUrl,
             DineIn = place.DineIn,
@@ -115,8 +134,6 @@ public class PresentationService
             {
                 var places = new List<Place>();
 
-                if (day.Hotel != null)
-                    places.Add(day.Hotel);
 
                 places.AddRange(day.Stops.Select(x => x.Place));
 
@@ -130,22 +147,72 @@ public class PresentationService
                 x => x.First()
             );
 
-
         foreach (var day in presentation.Itinerary)
         {
-            day.Hotel = day.Hotel == null ? null : ReplacePlace(day.Hotel, sourcePlaces);
-
+            if (day.Hotel != null)
+            {
+                HydrateActivity(day.Hotel, sourcePlaces);
+            }
 
             foreach (var activity in day.Activities)
             {
-                activity.Place = ReplacePlace(activity.Place, sourcePlaces);
-
-                foreach (var alt in activity.Alternatives)
-                {
-                    alt.Place = ReplacePlace(alt.Place, sourcePlaces);
-                }
+                HydrateActivity(activity, sourcePlaces);
             }
         }
+    }
+
+    private static void HydrateActivity(
+        PresentationActivity activity,
+        Dictionary<string, Place> source)
+    {
+        activity.Place = ReplacePlace(activity.Place, source);
+
+        for (var i = 0; i < activity.Alternatives.Count; i++)
+        {
+            activity.Alternatives[i] =
+                ReplacePlace(activity.Alternatives[i], source);
+        }
+    }
+    private void BuildAlternatives(FinalPresentation presentation)
+    {
+
+        presentation.Itinerary.ForEach(day =>
+        {
+            if (day.Hotel != null)
+            {
+                day.Hotel.Alternatives.AddRange(
+                    FindAlternatives(
+                        day.Hotel.Place,
+                        presentation.CandidatePlaces));
+            }
+
+            foreach (var activity in day.Activities)
+            {
+                activity.Alternatives.AddRange(
+                    FindAlternatives(
+                        activity.Place,
+                        presentation.CandidatePlaces));
+            }
+        });
+    }
+
+    private IEnumerable<PlacePresentation> FindAlternatives(
+    PlacePresentation place,
+    IEnumerable<PlacePresentation> candidates)
+    {
+        return candidates
+            .Where(p => p.PlaceId != place.PlaceId && _utils.Haversine(place.Location.Latitude, place.Location.Longitude, p.Location.Latitude, p.Location.Longitude) <= 50)
+            .Select(p => new
+            {
+                Place = p,
+                Score = (p.PrimaryType == place.PrimaryType ? 100 : 0) +
+                    p.Types.Intersect(place.Types).Count() * 10
+            })
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
+            .ThenByDescending(x => x.Place.Rating ?? 0)
+            .Take(5)
+            .Select(x => x.Place);
     }
 
     private static PlacePresentation ReplacePlace(

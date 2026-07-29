@@ -47,7 +47,7 @@ public class PresentationDay
 
     public List<string> Tips { get; init; } = [];
 
-    public PlacePresentation? Hotel { get; set; }
+    public PresentationActivity? Hotel { get; set; }
 
     public List<PresentationActivity> Activities { get; init; } = [];
 }
@@ -68,16 +68,8 @@ public class PresentationActivity
 
     public PlacePresentation Place { get; set; } = new();
 
-    public List<ActivityAlternative> Alternatives { get; init; } = [];
+    public List<PlacePresentation> Alternatives { get; init; } = [];
 }
-
-public class ActivityAlternative
-{
-    public string WhyVisit { get; init; } = "";
-
-    public PlacePresentation Place { get; set; } = new();
-}
-
 
 public class PlacePresentation
 {

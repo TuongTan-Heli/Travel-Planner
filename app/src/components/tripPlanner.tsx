@@ -3,13 +3,13 @@ import InteractiveMap from './InteractiveMap';
 import '../styles/tripPlanner.css';
 import { useAppSelector } from '../store/hooks';
 import TripCarousel from './tripCarousel';
-import type { Itinerary } from '../models/itinerary';
-import type { SelectedStop } from './stopCard';
-import { useEffect, useState } from 'react';
+import type { Itinerary, SelectedStop } from '../models/itinerary';
+import { useState } from 'react';
 import StopCard from './stopCard';
 
 export default function TripPlanner() {
   const presentationData = useAppSelector((state) => state.itinerary.presentationData);
+  const systemState = useAppSelector(state => state.system);
   const itinerary = presentationData as Itinerary | null;
   const [selectedStop, setSelectedStop] = useState<SelectedStop | null>(null);
 
@@ -18,6 +18,16 @@ export default function TripPlanner() {
       <div className="planner-top">
         <div className="planner-panel">
           <h2>Itinerary Preview</h2>
+          <h1>
+            {
+              systemState.processing && (
+                <div className="ai-status">
+                  <span className="spinner" />
+                  {systemState.message}
+                </div>
+              )
+            }
+          </h1>
           {selectedStop ? (
             <StopCard
               selectedStop={selectedStop}

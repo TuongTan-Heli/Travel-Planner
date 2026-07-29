@@ -1,12 +1,5 @@
-import type { Activity, Place } from '../models/itinerary';
+import type { SelectedStop } from '../models/itinerary';
 import '../styles/tripPlanner.css';
-
-export interface SelectedStop {
-  place: Place;
-  label?: string;
-  dayNumber?: number;
-  activity?: Activity;
-}
 
 interface StopCardProps {
   selectedStop: SelectedStop;
@@ -95,26 +88,32 @@ export default function StopCard({ selectedStop, onGoBack }: StopCardProps) {
             </a>
           ) : null}
         </div>
-        {selectedStop.activity && selectedStop.activity.alternatives.length > 0 && (
+        {selectedStop.stop.alternatives.length > 0 && (
           <div className="stop-card-alternatives">
             <h4>Alternative places</h4>
 
-            {selectedStop.activity.alternatives.map((alternative) => (
+            {selectedStop.stop.alternatives.map((alternative) => (
               <div
-                key={alternative.place.placeId}
+                key={alternative.placeId}
                 className="stop-card-alternative"
               >
-                <h5>
-                  {alternative.place.name}
-                </h5>
+                {/* <h5>
+                  {alternative.address}
+                </h5> */}
+                <div>
+                  <h5>
+                    {alternative.name}
+                  </h5>
+                </div>
 
-                <p>
-                  {alternative.whyVisit}
-                </p>
 
-                <span>
+                {/* <p>
+                  {alternative.description}
+                </p> */}
+
+                {/* <span>
                   {alternative.place.primaryType}
-                </span>
+                </span> */}
               </div>
             ))}
           </div>

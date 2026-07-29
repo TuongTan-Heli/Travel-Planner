@@ -1,5 +1,3 @@
-using TravelPlanner.Features.Chat.Models;
-
 public class TravelSession
 {
     public string SessionId { get; set; }

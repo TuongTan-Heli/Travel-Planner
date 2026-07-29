@@ -1,9 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import itineraryReducer from './itinerarySlice';
+import systemReducer from './systemSlice';
 
 export const store = configureStore({
   reducer: {
-    itinerary: itineraryReducer
+    itinerary: itineraryReducer,
+    system: systemReducer
   }
 });
 

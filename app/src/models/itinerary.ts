@@ -40,7 +40,7 @@ export interface Day {
     weather: string | null;
     tips: string[];
 
-    hotel: Place | null;
+    hotel: Activity | null;
 
     activities: Activity[];
 }
@@ -61,15 +61,15 @@ export interface Activity {
 
     place: Place;
 
-    alternatives: Alternative[];
+    alternatives: Place[];
 }
 
 
-export interface Alternative {
-    whyVisit: string;
+// export interface Alternative {
+//     whyVisit: string;
 
-    place: Place;
-}
+//     place: Place;
+// }
 
 
 export interface Place {
@@ -227,4 +227,11 @@ export interface WeatherDay {
     weatherCode: string;
 
     score: number;
+}
+
+export interface SelectedStop {
+    place: Place;
+    label?: string;
+    dayNumber?: number;
+    stop: Activity;
 }
