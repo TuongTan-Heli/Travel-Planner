@@ -219,7 +219,7 @@ public class PromptTemplate
                     "tips": ["string"],
 
                     "hotel": {
-                        "type": "Breakfast | Attraction | Lunch | Coffee | Dinner | FreeTime",
+                        "type": "Breakfast | Attraction | Lunch | Coffee | Dinner | FreeTime | Hotel",
 
                         "description": "string",
                         "whyVisit": "string",

@@ -30,5 +30,6 @@ public enum StopType
     Lunch,
     Coffee,
     Dinner,
-    FreeTime
+    FreeTime,
+    Hotel
 }
