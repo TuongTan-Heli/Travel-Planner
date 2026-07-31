@@ -1,12 +1,13 @@
 import type { SelectedStop } from '../models/itinerary';
-import '../styles/tripPlanner.css';
+import '../styles/stopCard.css';
 
 interface StopCardProps {
   selectedStop: SelectedStop;
+  onStopSelect: (stop: SelectedStop | null) => void;
   onGoBack: () => void;
 }
 
-export default function StopCard({ selectedStop, onGoBack }: StopCardProps) {
+export default function StopCard({ selectedStop, onStopSelect, onGoBack }: StopCardProps) {
   const { place, label, dayNumber } = selectedStop;
 
   const renderRatingStars = (rating?: number | null) => {
@@ -80,13 +81,11 @@ export default function StopCard({ selectedStop, onGoBack }: StopCardProps) {
           {place.phoneNumber ? (
             <a className="stop-card-link" href={`tel:${place.phoneNumber}`}>
               📞 {place.phoneNumber}
-            </a>
-          ) : null}
+            </a>) : null}
           {place.websiteUrl ? (
             <a className="stop-card-link" href={place.websiteUrl} target="_blank" rel="noreferrer">
               🌐 Website
-            </a>
-          ) : null}
+            </a>) : null}
         </div>
         {selectedStop.stop.alternatives.length > 0 && (
           <div className="stop-card-alternatives">
@@ -96,24 +95,25 @@ export default function StopCard({ selectedStop, onGoBack }: StopCardProps) {
               <div
                 key={alternative.placeId}
                 className="stop-card-alternative"
+                onClick={() => {
+                  const updatedStop: SelectedStop = {
+                    ...selectedStop,
+                    place: alternative,
+                    label: "Alternative",
+                    // keep original activity so alternatives remain available
+                    stop: selectedStop.stop
+                  };
+
+                  onStopSelect(updatedStop);
+                }}
               >
-                {/* <h5>
-                  {alternative.address}
-                </h5> */}
-                <div>
-                  <h5>
-                    {alternative.name}
-                  </h5>
+                <div className="stop-card-alternative-content">
+                  <h5>{alternative.name}</h5>
                 </div>
 
-
-                {/* <p>
-                  {alternative.description}
-                </p> */}
-
-                {/* <span>
-                  {alternative.place.primaryType}
-                </span> */}
+                <span className="stop-card-alternative-arrow">
+                  →
+                </span>
               </div>
             ))}
           </div>

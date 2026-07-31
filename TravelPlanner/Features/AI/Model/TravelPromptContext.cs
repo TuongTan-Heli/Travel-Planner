@@ -19,5 +19,6 @@ public class TravelPromptContext
     public DateTime? EndDate { get; set; }
     public List<string> Interests { get; set; } = [];
     public List<string> Preferences { get; set; } = [];
+    public double? Rating { get; set; }
 
 }

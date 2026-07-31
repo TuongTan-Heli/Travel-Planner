@@ -1,10 +1,21 @@
 using System.Globalization;
-using Microsoft.VisualBasic;
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TravelPlanner;
 
 public class Utils
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private static readonly string STATE_ID = "STATE";
+
     private readonly HttpClient _httpClient;
     public Utils(HttpClient httpClient)
     {
@@ -133,6 +144,40 @@ public class Utils
     private static double DegreesToRadians(double degrees)
     {
         return degrees * Math.PI / 180.0;
+    }
+
+    public async Task BroadcastStateAsync(
+    WebSocket socket,
+    bool processing,
+    string message)
+    {
+        await BroadcastAsync(socket, new SystemStateMessage
+        {
+            Id = STATE_ID,
+            Type = WebSocketMessType.State,
+            Message = message,
+            Processing = processing
+        });
+    }
+
+    public async Task BroadcastAsync(
+    WebSocket socket,
+    WebSocketMessage message)
+    {
+        var payload = JsonSerializer.Serialize(
+            message,
+            message.GetType(),
+            SerializerOptions
+        );
+
+        var bytes = Encoding.UTF8.GetBytes(payload);
+
+        await socket.SendAsync(
+            bytes,
+            WebSocketMessageType.Text,
+            true,
+            CancellationToken.None
+        );
     }
 
 }

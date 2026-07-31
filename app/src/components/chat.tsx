@@ -1,171 +1,23 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import '../styles/chat.css';
 import TypeWriter from './TypeWriter';
-import { useAppDispatch } from '../store/hooks';
-import { setPresentationData } from '../store/itinerarySlice';
-import { setSystemState } from '../store/systemSlice';
-import { Itinerary } from '../models/itinerary';
-import { WebSocketMessage } from '../models/websocket';
+import { ChatMessage } from '../models/websocket';
 
-// Simple UUID generator
-const Guid = {
-  NewGuid: () =>
-    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    })
-};
+interface ChatProps {
+  messages: ChatMessage[];
+  connected: boolean;
+  error: string | null;
 
-interface ChatMessage {
-  id: string;
-  text: string;
-  type: 'incoming' | 'outgoing';
-  sender?: string;
-  timestamp?: string;
-  thinking?: boolean;
+  onSend: (text: string) => void;
 }
 
-interface OutgoingMessage {
-  id: string;
-  text: string;
-}
-
-export default function Chat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export default function Chat({
+  messages,
+  connected,
+  error,
+  onSend,
+}: ChatProps) {
   const [inputValue, setInputValue] = useState('');
-  const [connected, setConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  const dispatch = useAppDispatch();
-
-  const handleChatMessage = useCallback(
-    (message: WebSocketMessage) => {
-
-      if (message.kind !== "Chat") {
-        return;
-      }
-      console.log("CHAT MESSAGE RECEIVED:", message);
-
-      if (message.id === "Presentation") {
-
-        try {
-          const parsed = JSON.parse(message.text) as Itinerary;
-
-          dispatch(setPresentationData(parsed));
-
-          return;
-
-        } catch {
-          console.error("Invalid presentation JSON");
-          return;
-        }
-      }
-
-
-      const chatMessage: ChatMessage = {
-        id: message.id,
-        text: message.text,
-        type:
-          message.chatType === "Outgoing"
-            ? "outgoing"
-            : "incoming",
-        sender: message.sender,
-        timestamp: message.timestamp,
-        thinking: message.thinking
-      };
-
-
-      setMessages(prev => {
-
-        const existing = prev.findIndex(
-          x => x.id === chatMessage.id
-        );
-
-        if (existing !== -1) {
-          const updated = [...prev];
-          updated[existing] = chatMessage;
-          return updated;
-        }
-
-
-        return [...prev, chatMessage];
-
-      });
-
-    },
-    [dispatch]
-  );
-
-  useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const websocketUrl = `${protocol}://localhost:5223/ws/chat`;
-    const socket = new WebSocket(websocketUrl);
-
-    socket.onopen = () => {
-      setConnected(true);
-      setError(null);
-    };
-
-    socket.onmessage = event => {
-      const message = JSON.parse(event.data) as WebSocketMessage;
-
-      switch (message.kind) {
-        case "State":
-          dispatch(
-            setSystemState({
-              message: message.message,
-              processing: message.processing
-            })
-          );
-          break;
-
-        case "Chat":
-          handleChatMessage(message);
-          break;
-
-        case "Error":
-          setError(message.message);
-          break;
-      }
-
-    };
-
-    socket.onclose = () => {
-      setConnected(false);
-    };
-
-    socket.onerror = () => {
-      setError('WebSocket connection error.');
-    };
-
-    socketRef.current = socket;
-
-    return () => {
-      socket.close();
-    };
-  }, [dispatch, handleChatMessage]);
-
-  const sendMessage = (text: string) => {
-    const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      setError('Unable to send message. Socket is not connected.');
-      return;
-    }
-
-    const messageId = Guid.NewGuid();
-    const localMessage: ChatMessage = {
-      id: messageId,
-      text: text,
-      type: 'outgoing',
-      sender: 'You',
-      timestamp: new Date().toISOString()
-    };
-    setMessages((prev) => [...prev, localMessage]);
-
-    const outgoing: OutgoingMessage = { id: messageId, text };
-    socket.send(JSON.stringify(outgoing));
-  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -174,7 +26,7 @@ export default function Chat() {
       return;
     }
 
-    sendMessage(trimmed);
+    onSend(trimmed);
     setInputValue('');
   };
 

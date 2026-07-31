@@ -1,5 +1,8 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+
 public class CurrencyExchangeService
 {
     private readonly HttpClient _http;
@@ -46,9 +49,45 @@ public class CurrencyExchangeService
 
         return amount * rate;
     }
+
+    public async Task<List<CurrencyDto>> GetCurrenciesAsync()
+    {
+        var url = $"{_apiUrl}/{_apiKey}/codes";
+
+        var response = await _http.GetFromJsonAsync<CurrencyResponse>(url);
+
+        if (response == null)
+        {
+            throw new AppException(
+                "CUR_EX_API_ERR",
+                "Unable to retrieve currencies."
+            );
+        }
+
+        return response.SupportedCodes
+            .Select(x => new CurrencyDto
+            {
+                Code = x[0],
+                Name = x[1]
+            })
+            .OrderBy(x => x.Code)
+            .ToList();
+    }
     public class ExchangeRateResponse
     {
         [JsonPropertyName("conversion_rates")]
         public Dictionary<string, decimal> ConversionRates { get; set; } = new();
+    }
+
+    public class CurrencyResponse
+    {
+        [JsonPropertyName("supported_codes")]
+        public List<List<string>> SupportedCodes { get; set; } = [];
+    }
+
+    public class CurrencyDto
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
     }
 }

@@ -2,21 +2,21 @@ import { Map, AdvancedMarker, InfoWindow, Pin, useMap, useMapsLibrary, } from '@
 import { useEffect, useState } from 'react';
 import type { Activity, Day, Place, SelectedStop, } from '../models/itinerary';
 import { useAppSelector } from '../store/hooks';
+import * as utils from '../utils'
 
 import '../styles/dayMap.css';
+import StopInfo from './StopInfo';
 
 interface DayMapContentProps {
     day: Day;
-    onStopSelect?: (stop: SelectedStop | null) => void;
+    selectedStop: SelectedStop | null;
+    onStopSelect: (stop: SelectedStop | null) => void;
 }
 
-export default function DayMapContent({ day, onStopSelect }: DayMapContentProps) {
+export default function DayMapContent({ day, selectedStop, onStopSelect }: DayMapContentProps) {
     const map = useMap();
     const routesLibrary = useMapsLibrary('routes');
-
     const activeDayIndex = useAppSelector((state) => state.itinerary.activeDayIndex);
-
-    const [selectedStop, setSelectedStop] = useState<SelectedStop | null>(null);
 
     const createStop = (
         activity: Activity,
@@ -29,7 +29,7 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
     });
 
     useEffect(() => {
-        setSelectedStop(null);
+        onStopSelect(null);
     }, [day.dayNumber]);
 
     useEffect(() => {
@@ -79,54 +79,16 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
             stop: activity
         };
 
-        setSelectedStop(stop);
-        onStopSelect?.(stop);
+        onStopSelect(stop);
     };
 
-    const renderRatingStars = (rating?: number | null) => {
-        const safeRating = typeof rating === 'number' && Number.isFinite(rating) ? rating : 0;
 
-        return (
-            <div className="day-map-rating-row">
-                <div className="day-map-stars">
-                    {Array.from({ length: 5 }, (_, index) => {
-                        const fill = Math.max(0, Math.min(100, (safeRating - index) * 100));
-
-                        return (
-                            <span
-                                key={index}
-                                className="day-map-star"
-                                style={{ background: `linear-gradient( 90deg,   #f59e0b 0%,  #f59e0b ${fill}%,   #cbd5e1 ${fill}%,  #cbd5e1 100% )`, }}   >
-                                ★
-                            </span>
-                        );
-                    })}
-                </div>
-
-                <span className="day-map-rating-value">
-                    {safeRating.toFixed(1)}
-                </span>
-            </div>
-        );
-    };
-
-    const openGoogleMaps = (
-        lat: number,
-        lon: number,
-        name?: string
-    ) => {
-        window.open(
-            `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name ?? `${lat},${lon}`)}`,
-            '_blank',
-            'noopener,noreferrer'
-        );
-    };
 
     return (
         <div className="day-map-shell">
             <Map
                 mapId={`${day.dayNumber}-${activeDayIndex}`}
-                style={{ width: '100%', height: '500px', }}
+                style={{ width: '100%', height: '100%', }}
                 defaultCenter={{ lat: day.hotel?.place.location.latitude ?? 0, lng: day.hotel?.place.location.longitude ?? 0, }}
                 defaultZoom={10}
                 gestureHandling="greedy">
@@ -138,8 +100,7 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
 
                             const stop = createStop(day.hotel, "Hotel");
 
-                            setSelectedStop(stop);
-                            onStopSelect?.(stop);
+                            onStopSelect(stop);
                         }} >
                         <div>
                             <Pin background="#0f9d58"
@@ -150,7 +111,7 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
                                 className="day-map-google-button"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    openGoogleMaps(
+                                    utils.openGoogleMaps(
                                         day.hotel!.place.location.latitude,
                                         day.hotel!.place.location.longitude,
                                         day.hotel!.place.name);
@@ -211,8 +172,7 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
                                 stop: selectedStop.stop
                             };
 
-                            setSelectedStop(stop);
-                            onStopSelect?.(stop);
+                            onStopSelect(stop);
                         }} >
                         <Pin
                             background="#4285F4"
@@ -225,69 +185,20 @@ export default function DayMapContent({ day, onStopSelect }: DayMapContentProps)
                 {selectedStop && (
                     <InfoWindow
                         position={{ lat: selectedStop.place.location.latitude, lng: selectedStop.place.location.longitude, }}
-                        onCloseClick={() => { setSelectedStop(null); onStopSelect?.(null) }} >
-                        <div className="day-map-info-window">
-                            <h3 className="day-map-title">
-                                {selectedStop.place.name}
-                            </h3>
+                        onCloseClick={() => { onStopSelect(null) }} >
+                        <StopInfo
+                            selectedStop={selectedStop}
+                            onAlternativeSelect={(place) => {
+                                const updatedStop : SelectedStop = {
+                                    ...selectedStop,
+                                    place,
+                                    label: "Alternative",
 
-                            <p className="day-map-address">
-                                {selectedStop.place.address}
-                            </p>
+                                    stop: selectedStop.stop
+                                };
+                                onStopSelect(updatedStop);
+                            }}/>
 
-                            {renderRatingStars(selectedStop.place.rating)}
-                            {
-                                selectedStop.place.userRatingCount != 0 &&
-                                <span className="day-map-meta">
-                                    · {selectedStop.place.userRatingCount} reviews
-                                </span>
-                            }
-
-
-                            {selectedStop.place.types?.length && (
-                                <div className="day-map-tags">
-                                    {selectedStop.place.types
-                                        .slice(0, 4)
-                                        .map((type: string) => (
-                                            <span key={type} className="day-map-tag" >
-                                                {type}
-                                            </span>
-                                        ))}
-                                </div>
-                            )}
-
-                            {selectedStop.place.description && (
-                                <p className="day-map-description">
-                                    {selectedStop.place.description}
-                                </p>
-                            )}
-
-                            <button
-                                className="day-map-google-button"
-                                onClick={() => openGoogleMaps(
-                                    selectedStop.place.location.latitude,
-                                    selectedStop.place.location.longitude,
-                                    selectedStop.place.name)}>
-                                🗺️ Open in Google Maps
-                            </button>
-
-                            <div className="day-map-links">
-                                {selectedStop.place.phoneNumber && (
-                                    <a className="day-map-link" href={`tel:${selectedStop.place.phoneNumber}`} >
-                                        📞 {selectedStop.place.phoneNumber}
-                                    </a>
-                                )}
-
-                                {selectedStop.place.websiteUrl && (
-                                    <a className="day-map-link"
-                                        href={selectedStop.place.websiteUrl}
-                                        target="_blank"
-                                        rel="noreferrer" >
-                                        🌐 Website
-                                    </a>
-                                )}
-                            </div>
-                        </div>
                     </InfoWindow>
                 )}
             </Map>

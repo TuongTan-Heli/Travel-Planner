@@ -1,5 +1,5 @@
 import { useEffect, useState, type PointerEvent } from 'react';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setActiveDayIndex } from '../store/itinerarySlice';
 import type { Itinerary } from '../models/itinerary';
 
@@ -17,15 +17,13 @@ interface Slide {
 export default function TripCarousel({ data }: TripCarouselProps) {
   const slides = buildSlides(data);
   const dispatch = useAppDispatch();
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0); 
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [startX, setStartX] = useState<number | null>(null);
 
   useEffect(() => {
-    setActiveIndex(0);
     setDragOffset(0);
-    dispatch(setActiveDayIndex(0));
   }, [slides.length, dispatch]);
 
   const goToSlide = (index: number) => {

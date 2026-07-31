@@ -8,12 +8,4 @@ public class TravelSession
 
     public TravelPromptContext Context { get; set; }
         = new();
-
-    // public List<ChatMessage> Messages { get; set; }
-    //     = [];
-
-    // public bool IsReadyForPlanning { get; set; }
-
-    // public DateTime LastUpdated { get; set; }
-    //     = DateTime.UtcNow;
 }
