@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import '../styles/planner.css';
 import Select from "react-select";
 
 export interface PlannerRequest {
@@ -116,27 +117,25 @@ export default function Planner({ onSubmit }: PlannerProps) {
   };
 
   return (
-    <section className="w-full max-w-md p-6 rounded-2xl bg-gradient-to-br from-white to-slate-50 shadow-xl">
-      <div className="mb-4">
-        <h3 className="text-xl font-semibold">Create your trip</h3>
-        <p className="text-sm text-gray-500">Tell us what kind of adventure you want</p>
+    <section className="planner-form">
+      <div className="planner-header">
+        <h3>Create your trip</h3>
+        <p>Tell us what kind of adventure you want</p>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-3 mb-4">
-          <label className="font-semibold text-slate-700">Destination *</label>
+        <div className="form-group">
+          <label>Destination *</label>
           <input
-            className="w-full p-3 rounded-lg border border-gray-300 text-base"
             placeholder="Destination"
             value={destination}
             onChange={e => setDestination(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="flex flex-col gap-3">
-            <label className="font-semibold text-slate-700">Budget *</label>
+        <div className="form-row">
+          <div className="form-group">
+            <label>Budget *</label>
             <input
-              className="p-3 rounded-lg border border-gray-300"
               type="number"
               placeholder="Budget"
               value={budget}
@@ -145,9 +144,11 @@ export default function Planner({ onSubmit }: PlannerProps) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 mb-4">
-          <label className="font-semibold text-slate-700">Currency</label>
-          <select className="p-3 rounded-lg border border-gray-300" value={currency} onChange={e => setCurrency(e.target.value)}>
+        <div className="form-group">
+          <label>Currency</label>
+          <select
+            value={currency}
+            onChange={e => setCurrency(e.target.value)}>
             <option value="">Select currency</option>
             {currencies.map(c => (
               <option key={c.code} value={c.code}>
@@ -157,55 +158,77 @@ export default function Planner({ onSubmit }: PlannerProps) {
           </select>
         </div>
 
-        <div className="flex gap-3 mb-4">
+        <div className="duration-toggle">
           <button
             type="button"
-            className={`flex-1 py-2 rounded-lg font-semibold ${!haveTimeRange ? 'bg-gradient-to-r from-indigo-600 to-cyan-500 text-white' : 'bg-gray-200 text-slate-700'}`}
+            className={!haveTimeRange ? "active" : ""}
             onClick={() => setHaveTimeRange(false)}>
             Number of days
           </button>
           <button
             type="button"
-            className={`flex-1 py-2 rounded-lg font-semibold ${haveTimeRange ? 'bg-gradient-to-r from-indigo-600 to-cyan-500 text-white' : 'bg-gray-200 text-slate-700'}`}
+            className={haveTimeRange ? "active" : ""}
             onClick={() => setHaveTimeRange(true)}>
             Date range
           </button>
         </div>
 
         {haveTimeRange ? (
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="flex flex-col">
-              <label className="font-semibold text-slate-700">Start date *</label>
-              <input className="p-2 rounded-lg border border-gray-300" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Start date *</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)} />
             </div>
-            <div className="flex flex-col">
-              <label className="font-semibold text-slate-700">End date *</label>
-              <input className="p-2 rounded-lg border border-gray-300" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <div className="form-group">
+              <label>End date *</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)} />
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 mb-4">
-            <label className="font-semibold text-slate-700">Number of days *</label>
-            <input className="p-3 rounded-lg border border-gray-300" type="number" min={1} value={days} onChange={e => setDays(Number(e.target.value))} />
+          <div className="form-group">
+            <label>Number of days *</label>
+            <input
+              type="number"
+              min={1}
+              value={days}
+              onChange={e => setDays(Number(e.target.value))}
+            />
           </div>
         )}
 
-        <label className="block mb-2 font-semibold text-slate-700">Interests</label>
-        <Select
-          isMulti
-          options={INTEREST_OPTIONS}
-          value={interests}
-          onChange={(value) => setInterests([...value])}
-          placeholder="Select your interests..."
-          className="mb-4"
-        />
-
-        <div className="flex flex-col gap-3 mb-4">
-          <label className="font-semibold text-slate-700">Minimum rating</label>
-          <input className="p-3 rounded-lg border border-gray-300" type="number" min={0} max={5} step={0.5} value={rating} onChange={e => setRating(Number(e.target.value))} />
+        <div className="form-group">
+          <label>Interests</label>
+          <Select
+            isMulti
+            options={INTEREST_OPTIONS}
+            value={interests}
+            onChange={(value) => setInterests([...value])}
+            placeholder="Select your interests..."
+            className="interest-select"
+          />
         </div>
 
-        <button type="submit" className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600">Generate Trip</button>
+        <div className="form-group">
+          <label>Minimum rating</label>
+          <input
+            type="number"
+            min={0}
+            max={5}
+            step={0.5}
+            value={rating}
+            onChange={e => setRating(Number(e.target.value))}
+          />
+        </div>
+
+        <button type="submit" className="generate-button">
+          Generate Trip
+        </button>
       </form>
     </section>
   );

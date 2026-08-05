@@ -1,0 +1,127 @@
+.planner-form {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.planner-header {
+  margin-bottom: 1.5rem;
+}
+
+.planner-header h3 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.planner-header p {
+  margin: 0.5rem 0 0;
+  color: #475569;
+  font-size: 0.98rem;
+}
+
+.form-group,
+.duration-toggle,
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-row {
+  gap: 1rem;
+}
+
+.form-row > .form-group {
+  flex: 1;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.form-group input,
+.form-group select,
+.form-group .interest-select {
+  width: 100%;
+  padding: 1rem 1rem;
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+  font-size: 1rem;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group .interest-select:focus-within {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+  background: #ffffff;
+}
+
+.duration-toggle {
+  flex-direction: row;
+  gap: 0.75rem;
+}
+
+.duration-toggle button {
+  flex: 1;
+  min-height: 3.5rem;
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.duration-toggle button.active,
+.duration-toggle button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #6366f1 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.generate-button {
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.generate-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.interest-select {
+  min-height: 3.5rem;
+}
+
+@media (max-width: 768px) {
+  .planner-form {
+    padding: 1.5rem;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+}

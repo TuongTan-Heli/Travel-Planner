@@ -203,8 +203,8 @@ export default function TripPlanner() {
             </div>
           )}
 
-          <div className="bg-white rounded-xl p-6 shadow-md h-full">
-            <h2 className="text-lg font-semibold">Itinerary Preview</h2>
+          <div className="p-4 bg-white rounded-xl p-6 shadow-md h-full">
+            <h2 className="text-lg font-semibold border-blue-500">Itinerary Preview</h2>
             {itinerary ? (
               <>
                 <TripCarousel data={itinerary} />
