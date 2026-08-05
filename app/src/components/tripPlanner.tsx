@@ -1,6 +1,5 @@
 import Chat from './chat';
-import InteractiveMap from './InteractiveMap';
-import '../styles/tripPlanner.css';
+import InteractiveMap from './interactiveMap';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import TripCarousel from './tripCarousel';
 import type { Itinerary, SelectedStop } from '../models/itinerary';
@@ -39,6 +38,7 @@ export default function TripPlanner() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeBottomPanel, setActiveBottomPanel] = useState<'chat' | 'planner'>('chat');
   const socketRef = useRef<WebSocket | null>(null);
   const dispatch = useAppDispatch();
 
@@ -188,47 +188,83 @@ export default function TripPlanner() {
   };
 
   return (
-    <section className="planner-root">
-
-      <div className="planner-top">
-        <div className="planner-panel">
+    <section className="grid gap-6 w-full">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 items-stretch">
+        <div className="relative">
           {systemState.processing && (
-            <div className="ai-panel-overlay">
-              <div className="ai-overlay-content">
-                <div className="ai-orb">
-                  <span className="spinner" />
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-slate-800/60 to-indigo-700/60 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-4 text-white text-center p-6">
+                <div className="w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-r from-sky-400 to-violet-500 shadow-lg animate-pulse">
+                  <span className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
                 </div>
-
-                <h2>Planning your trip</h2>
-                <p>{systemState.message}</p>
+                <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-sky-300 via-indigo-300 to-purple-300">Planning your trip</h2>
+                <p className="text-sm text-white/80">{systemState.message}</p>
               </div>
             </div>
           )}
-          <h2>Itinerary Preview</h2>
-          {itinerary ? (
-            <>
-              <TripCarousel data={itinerary} />
 
-              {selectedStop && (
-                <StopCard
-                  onStopSelect={setSelectedStop}
-                  selectedStop={selectedStop}
-                  onGoBack={() => setSelectedStop(null)}
-                />
-              )}
-            </>
+          <div className="bg-white rounded-xl p-6 shadow-md h-full">
+            <h2 className="text-lg font-semibold">Itinerary Preview</h2>
+            {itinerary ? (
+              <>
+                <TripCarousel data={itinerary} />
+
+                {selectedStop && (
+                  <StopCard
+                    onStopSelect={setSelectedStop}
+                    selectedStop={selectedStop}
+                    onGoBack={() => setSelectedStop(null)}
+                  />
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">No itinerary data yet.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-md h-full">
+          <InteractiveMap selectedStop={selectedStop} onStopSelect={setSelectedStop} />
+        </div>
+      </div>
+
+      <div className="grid gap-6">
+        <div className="flex gap-2 mb-4">
+          <button
+            type="button"
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+              activeBottomPanel === 'chat'
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+            }`}
+            onClick={() => setActiveBottomPanel('chat')}
+          >
+            Chat
+          </button>
+          <button
+            type="button"
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+              activeBottomPanel === 'planner'
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+            }`}
+            onClick={() => setActiveBottomPanel('planner')}
+          >
+            Planner
+          </button>
+        </div>
+
+        <div className="flex flex-col">
+          {activeBottomPanel === 'chat' ? (
+            <div className="bg-white rounded-xl p-4 shadow-sm h-[420px] overflow-auto">
+              <Chat messages={messages} connected={connected} error={error} onSend={sendMessage} />
+            </div>
           ) : (
-            <p>No itinerary data yet.</p>
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <Planner onSubmit={sendPlannerRequest} />
+            </div>
           )}
         </div>
-        <InteractiveMap selectedStop={selectedStop} onStopSelect={setSelectedStop} />
-      </div>
-      <div className="planner-bottom">
-        <Chat messages={messages}
-          connected={connected}
-          error={error}
-          onSend={sendMessage} />
-        <Planner onSubmit={sendPlannerRequest} />
       </div>
     </section>
   );

@@ -1,5 +1,4 @@
 import { useState, type PointerEvent } from 'react';
-import '../styles/carousel.css';
 
 const cards = [
   {
@@ -62,49 +61,45 @@ export default function Carousel() {
   };
 
   return (
-    <section className="carousel-panel">
-      <div className="carousel-header">
+    <section className="flex flex-col gap-3 p-4 rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-md">
+      <div className="flex items-start justify-between">
         <div>
-          <p className="carousel-eyebrow">Trip highlights</p>
-          <h3>Explore your plan</h3>
+          <p className="text-xs font-extrabold uppercase tracking-wider text-indigo-600">Trip highlights</p>
+          <h3 className="text-lg font-semibold text-slate-900">Explore your plan</h3>
         </div>
-        <div className="carousel-nav" aria-label="Carousel controls">
-          <button type="button" onClick={prevSlide} aria-label="Previous slide">
-            ←
-          </button>
-          <button type="button" onClick={nextSlide} aria-label="Next slide">
-            →
-          </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={prevSlide} aria-label="Previous slide" className="w-9 h-9 rounded-full bg-white text-slate-700 shadow">←</button>
+          <button type="button" onClick={nextSlide} aria-label="Next slide" className="w-9 h-9 rounded-full bg-white text-slate-700 shadow">→</button>
         </div>
       </div>
 
       <div
-        className={`carousel-viewport ${dragging ? 'dragging' : ''}`}
+        className={`overflow-hidden rounded-lg touch-pan-y select-none ${dragging ? 'cursor-grabbing' : ''}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
       >
         <div
-          className="carousel-track"
+          className="flex transition-transform duration-300 ease-in-out will-change-transform"
           style={{ transform: `translateX(calc(${-activeIndex * 100}% + ${dragOffset}px))` }}
         >
           {cards.map((card) => (
-            <article key={card.title} className="carousel-card">
-              <p className="carousel-accent">{card.accent}</p>
-              <h4>{card.title}</h4>
-              <p>{card.description}</p>
+            <article key={card.title} className="flex-0 min-h-[170px] w-full p-4 rounded-lg bg-gradient-to-br from-white to-violet-50 shadow-inner flex flex-col justify-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-violet-600">{card.accent}</p>
+              <h4 className="text-base font-semibold text-slate-900">{card.title}</h4>
+              <p className="text-sm text-slate-600">{card.description}</p>
             </article>
           ))}
         </div>
       </div>
 
-      <div className="carousel-dots" aria-label="Carousel dots">
+      <div className="flex justify-center gap-2">
         {cards.map((card, index) => (
           <button
             key={card.title}
             type="button"
-            className={index === activeIndex ? 'active' : ''}
+            className={`${index === activeIndex ? 'bg-indigo-600 scale-105' : 'bg-slate-300'} w-2.5 h-2.5 rounded-full transition-transform`}
             onClick={() => goToSlide(index)}
             aria-label={`Go to slide ${index + 1}`}
           />

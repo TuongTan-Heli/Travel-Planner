@@ -71,51 +71,47 @@ export default function TripCarousel({ data }: TripCarouselProps) {
   }
 
   return (
-    <section className="trip-carousel">
-      <div className="trip-carousel-header">
+    <section className="flex flex-col gap-3 mt-3 flex-1">
+      <div className="flex items-start justify-between">
         <div>
-          <p className="trip-carousel-eyebrow">Itinerary flow</p>
-          <h3>Explore your plan</h3>
+          <p className="text-xs font-extrabold uppercase tracking-wider text-indigo-600">Itinerary flow</p>
+          <h3 className="text-lg font-semibold text-slate-900">Explore your plan</h3>
         </div>
         {slides.length > 1 && (
-          <div className="trip-carousel-nav" aria-label="Carousel controls">
-            <button type="button" onClick={prevSlide} aria-label="Previous slide">
-              ←
-            </button>
-            <button type="button" onClick={nextSlide} aria-label="Next slide">
-              →
-            </button>
+          <div className="flex gap-2" aria-label="Carousel controls">
+            <button type="button" onClick={prevSlide} aria-label="Previous slide" className="w-9 h-9 rounded-full bg-white text-slate-700 shadow">←</button>
+            <button type="button" onClick={nextSlide} aria-label="Next slide" className="w-9 h-9 rounded-full bg-white text-slate-700 shadow">→</button>
           </div>
         )}
       </div>
 
       <div
-        className={`trip-carousel-viewport ${dragging ? 'dragging' : ''}`}
+        className={`overflow-hidden rounded-lg touch-pan-y select-none ${dragging ? 'cursor-grabbing' : ''}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
         onPointerCancel={handlePointerUp}>
         <div
-          className="trip-carousel-track"
+          className="flex transition-transform duration-300 ease-in-out will-change-transform"
           style={{ transform: `translateX(calc(${-activeIndex * 100}% + ${dragOffset}px))` }} >
           {slides.map((slide) => (
-            <article key={slide.title} className="trip-carousel-card">
-              <p className="trip-carousel-accent">{slide.subtitle}</p>
-              <h4>{slide.title}</h4>
-              <p>{slide.body}</p>
+            <article key={slide.title} className="flex-0 min-h-[170px] w-full p-4 rounded-lg bg-gradient-to-br from-white to-violet-50 shadow-inner flex flex-col justify-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-violet-600">{slide.subtitle}</p>
+              <h4 className="text-base font-semibold text-slate-900">{slide.title}</h4>
+              <p className="text-sm text-slate-600 whitespace-pre-line">{slide.body}</p>
             </article>
           ))}
         </div>
       </div>
 
       {slides.length > 1 && (
-        <div className="trip-carousel-dots" aria-label="Carousel dots">
+        <div className="flex justify-center gap-2" aria-label="Carousel dots">
           {slides.map((slide, index) => (
             <button
               key={slide.title}
               type="button"
-              className={index === activeIndex ? 'active' : ''}
+              className={`${index === activeIndex ? 'bg-indigo-600 scale-105' : 'bg-slate-300'} w-2.5 h-2.5 rounded-full transition-transform`}
               onClick={() => goToSlide(index)}
               aria-label={`Go to slide ${index + 1}`}
             />

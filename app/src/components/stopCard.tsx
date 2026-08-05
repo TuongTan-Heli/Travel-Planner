@@ -1,5 +1,4 @@
 import type { SelectedStop } from '../models/itinerary';
-import '../styles/stopCard.css';
 
 interface StopCardProps {
   selectedStop: SelectedStop;
@@ -19,8 +18,8 @@ export default function StopCard({ selectedStop, onStopSelect, onGoBack }: StopC
       return (
         <span
           key={index}
-          className="stop-card-star"
-          style={{ background: `linear-gradient(90deg, #f59e0b 0%, #f59e0b ${percent}%, #cbd5e1 ${percent}%, #cbd5e1 100%)` }}
+          className="text-[15px] leading-none"
+          style={{ background: `linear-gradient(90deg, #f59e0b 0%, #f59e0b ${percent}%, #cbd5e1 ${percent}%, #cbd5e1 100%)`, WebkitBackgroundClip: 'text', color: 'transparent' }}
         >
           ★
         </span>
@@ -28,92 +27,94 @@ export default function StopCard({ selectedStop, onStopSelect, onGoBack }: StopC
     });
 
     return (
-      <div className="stop-card-rating-row">
-        <div className="stop-card-stars">{stars}</div>
-        <span className="stop-card-rating-value">{safeRating.toFixed(1)}</span>
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1">{stars}</div>
+        <span className="text-sm font-bold text-slate-700">{safeRating.toFixed(1)}</span>
       </div>
     );
   };
 
   return (
-    <section className="stop-card">
-      <div className="stop-card-header">
+    <section className="flex flex-col gap-4 flex-1 mt-3 p-4 rounded-lg bg-gradient-to-br from-white to-slate-50 shadow-inner">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h3>{place.name}</h3>
+          <h3 className="text-lg font-semibold text-slate-900">{place.name}</h3>
           {(label || dayNumber !== undefined) && (
-            <p className="stop-card-subtitle">
-              {/* {label ?? 'Stop'} */}
+            <p className="text-indigo-600 text-sm font-semibold mt-1">
               {dayNumber !== undefined ? `Day ${dayNumber}` : ''}
             </p>
           )}
         </div>
-        <button type="button" className="stop-card-back" onClick={onGoBack}>
+
+        <button
+          type="button"
+          onClick={onGoBack}
+          className="bg-indigo-50 text-indigo-700 rounded-full px-3 py-1 font-semibold"
+        >
           ←
         </button>
       </div>
 
-      <div className="stop-card-body">
-        <p className="stop-card-address">{place.address}</p>
+      <div className="flex flex-col gap-3">
+        <p className="text-slate-600">{place.address}</p>
 
         {renderRatingStars(place.rating)}
 
-        <div className="stop-card-meta">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
           {place.userRatingCount !== undefined && place.userRatingCount !== null && (
             <span>{place.userRatingCount} reviews</span>
           )}
-
           {place.primaryType ? <span>• {place.primaryType}</span> : null}
         </div>
 
         {place.types?.length ? (
-          <div className="stop-card-tags">
+          <div className="flex flex-wrap gap-2">
             {place.types.slice(0, 4).map((type) => (
-              <span key={type} className="stop-card-tag">
+              <span key={type} className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
                 {type}
               </span>
             ))}
           </div>
         ) : null}
 
-        {place.reviewSummary ? <p className="stop-card-description">{place.reviewSummary}</p> : null}
+        {place.reviewSummary ? <p className="text-slate-700">{place.reviewSummary}</p> : null}
 
-        <div className="stop-card-links">
+        <div className="flex flex-col gap-2">
           {place.phoneNumber ? (
-            <a className="stop-card-link" href={`tel:${place.phoneNumber}`}>
+            <a className="text-blue-600 hover:underline" href={`tel:${place.phoneNumber}`}>
               📞 {place.phoneNumber}
             </a>) : null}
           {place.websiteUrl ? (
-            <a className="stop-card-link" href={place.websiteUrl} target="_blank" rel="noreferrer">
+            <a className="text-blue-600 hover:underline" href={place.websiteUrl} target="_blank" rel="noreferrer">
               🌐 Website
             </a>) : null}
         </div>
+
         {selectedStop.stop.alternatives.length > 0 && (
-          <div className="stop-card-alternatives">
-            <h4>Alternative places</h4>
+          <div>
+            <h4 className="mt-2 text-sm font-semibold text-slate-700">Alternative places</h4>
 
             {selectedStop.stop.alternatives.map((alternative) => (
               <div
                 key={alternative.placeId}
-                className="stop-card-alternative"
+                role="button"
                 onClick={() => {
                   const updatedStop: SelectedStop = {
                     ...selectedStop,
                     place: alternative,
-                    label: "Alternative",
-                    // keep original activity so alternatives remain available
+                    label: 'Alternative',
                     stop: selectedStop.stop
                   };
 
                   onStopSelect(updatedStop);
                 }}
+                className="flex justify-between items-center p-3 mt-2 border rounded-lg bg-white hover:bg-slate-50 transform transition hover:-translate-y-1 cursor-pointer"
               >
-                <div className="stop-card-alternative-content">
-                  <h5>{alternative.name}</h5>
+                <div>
+                  <h5 className="text-sm font-semibold text-slate-900">{alternative.name}</h5>
                 </div>
 
-                <span className="stop-card-alternative-arrow">
-                  →
-                </span>
+                <span className="text-blue-500 text-xl transition-transform">→</span>
               </div>
             ))}
           </div>

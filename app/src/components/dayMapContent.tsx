@@ -4,8 +4,7 @@ import type { Activity, Day, Place, SelectedStop, } from '../models/itinerary';
 import { useAppSelector } from '../store/hooks';
 import * as utils from '../utils'
 
-import '../styles/dayMap.css';
-import StopInfo from './StopInfo';
+import StopInfo from './stopInfo';
 
 interface DayMapContentProps {
     day: Day;
@@ -85,7 +84,7 @@ export default function DayMapContent({ day, selectedStop, onStopSelect }: DayMa
 
 
     return (
-        <div className="day-map-shell">
+        <div className="flex flex-col gap-3 h-full">
             <Map
                 mapId={`${day.dayNumber}-${activeDayIndex}`}
                 style={{ width: '100%', height: '100%', }}
@@ -108,14 +107,14 @@ export default function DayMapContent({ day, selectedStop, onStopSelect }: DayMa
                                 glyphColor="#60d98f" />
 
                             <button
-                                className="day-map-google-button"
+                                className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-md hover:-translate-y-0.5 transition-transform"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     utils.openGoogleMaps(
                                         day.hotel!.place.location.latitude,
                                         day.hotel!.place.location.longitude,
                                         day.hotel!.place.name);
-                                }} >
+                                }}>
                                 🗺️ Open in Google Maps
                             </button>
                         </div>
