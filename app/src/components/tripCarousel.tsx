@@ -17,7 +17,7 @@ interface Slide {
 export default function TripCarousel({ data }: TripCarouselProps) {
   const slides = buildSlides(data);
   const dispatch = useAppDispatch();
-  const [activeIndex, setActiveIndex] = useState(0); 
+  const [activeIndex, setActiveIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [startX, setStartX] = useState<number | null>(null);
@@ -79,8 +79,8 @@ export default function TripCarousel({ data }: TripCarouselProps) {
         </div>
         {slides.length > 1 && (
           <div className="flex gap-2" aria-label="Carousel controls">
-            <button type="button" onClick={prevSlide} aria-label="Previous slide" className="w-9 h-9 rounded-full bg-white text-slate-700 shadow">←</button>
-            <button type="button" onClick={nextSlide} aria-label="Next slide" className="w-9 h-9 rounded-full bg-white text-slate-700 shadow">→</button>
+            <button type="button" onClick={prevSlide} aria-label="Previous slide" className="button w-9 h-9 rounded-full bg-white text-slate-700 shadow">←</button>
+            <button type="button" onClick={nextSlide} aria-label="Next slide" className="button w-9 h-9 rounded-full bg-white text-slate-700 shadow">→</button>
           </div>
         )}
       </div>
@@ -111,7 +111,7 @@ export default function TripCarousel({ data }: TripCarouselProps) {
             <button
               key={slide.title}
               type="button"
-              className={`${index === activeIndex ? 'bg-indigo-600 scale-105' : 'bg-slate-300'} w-2.5 h-2.5 rounded-full transition-transform`}
+              className={`button ${index === activeIndex ? 'bg-slate-500 scale-105' : 'bg-slate-300'} p-0 w-2.5 h-2.5 rounded-full transition-transform`}
               onClick={() => goToSlide(index)}
               aria-label={`Go to slide ${index + 1}`}
             />

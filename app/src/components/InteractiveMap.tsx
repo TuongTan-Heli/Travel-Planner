@@ -14,12 +14,10 @@ export default function InteractiveMap({ selectedStop, onStopSelect }: Interacti
   const activeDay = itinerary?.itinerary?.[activeDayIndex] ?? itinerary?.itinerary?.[0];
 
   return (
-    <div className="flex flex-col min-h-[320px] gap-4">
-      <div className="flex-1 min-h-[360px] rounded-lg bg-gradient-to-br from-sky-100 to-slate-100 grid place-items-center text-slate-900 overflow-hidden">
+      <div className="flex-1 h-full rounded-lg bg-gradient-to-br from-sky-100 to-slate-100 grid place-items-center text-slate-900 overflow-hidden">
         <div className="w-full h-full">
           {activeDay && (<DayMap day={activeDay} selectedStop={selectedStop} onStopSelect={onStopSelect} />)}
         </div>
       </div>
-    </div>
   );
 }

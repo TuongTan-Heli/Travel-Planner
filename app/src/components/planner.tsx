@@ -161,13 +161,13 @@ export default function Planner({ onSubmit }: PlannerProps) {
         <div className="duration-toggle">
           <button
             type="button"
-            className={!haveTimeRange ? "active" : ""}
+            className={`button p-3 ${!haveTimeRange ? "active" : ""}`}
             onClick={() => setHaveTimeRange(false)}>
             Number of days
           </button>
           <button
             type="button"
-            className={haveTimeRange ? "active" : ""}
+            className={`button p-3 ${haveTimeRange ? "active" : ""}`}
             onClick={() => setHaveTimeRange(true)}>
             Date range
           </button>
@@ -226,7 +226,7 @@ export default function Planner({ onSubmit }: PlannerProps) {
           />
         </div>
 
-        <button type="submit" className="generate-button">
+        <button type="submit" className="button generate-button">
           Generate Trip
         </button>
       </form>

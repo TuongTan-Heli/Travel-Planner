@@ -49,8 +49,7 @@ export default function StopCard({ selectedStop, onStopSelect, onGoBack }: StopC
         <button
           type="button"
           onClick={onGoBack}
-          className="bg-indigo-50 text-indigo-700 rounded-full px-3 py-1 font-semibold"
-        >
+          className="button rounded-full ">
           ←
         </button>
       </div>
@@ -108,13 +107,11 @@ export default function StopCard({ selectedStop, onStopSelect, onGoBack }: StopC
 
                   onStopSelect(updatedStop);
                 }}
-                className="flex justify-between items-center p-3 mt-2 border rounded-lg bg-white hover:bg-slate-50 transform transition hover:-translate-y-1 cursor-pointer"
+                className="button p-2 flex justify-between items-center mt-2 border rounded-lg bg-white hover:bg-slate-50 transform transition hover:-translate-y-1 cursor-pointer"
               >
-                <div>
-                  <h5 className="text-sm font-semibold text-slate-900">{alternative.name}</h5>
-                </div>
+                <span>{alternative.name}</span>
 
-                <span className="text-blue-500 text-xl transition-transform">→</span>
+                <span className="text-xl transition-transform">→</span>
               </div>
             ))}
           </div>

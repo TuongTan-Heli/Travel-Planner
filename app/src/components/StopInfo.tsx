@@ -56,7 +56,7 @@ export default function StopInfo({ selectedStop, onAlternativeSelect }: StopInfo
             )}
 
             <button
-                className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-md hover:-translate-y-0.5 transition-transform"
+                className="button inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-md hover:-translate-y-0.5 transition-transform"
                 onClick={() => openGoogleMaps(selectedStop.place.location.latitude, selectedStop.place.location.longitude, selectedStop.place.name)}
             >
                 🗺️ Open in Google Maps

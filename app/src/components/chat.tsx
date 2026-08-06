@@ -31,13 +31,13 @@ export default function Chat({
 
   return (
     <section className="flex flex-col h-full">
-      <h3 className="text-lg font-semibold">Chat</h3>
-      <div className="flex flex-col h-full bg-white rounded-lg p-4 shadow-sm">
+      <h3 className="text-lg font-semibold">Chat with AI</h3>
+      <div className="bg-white rounded-lg p-4 shadow-sm">
         <div className="text-sm text-gray-500 flex items-center gap-3">
           {connected ? 'Connected' : 'Disconnected'}
           {error && <span className="text-red-500 ml-2">{error}</span>}
         </div>
-        <div className="flex flex-col gap-3 overflow-auto p-2 flex-1">
+        <div className="flex flex-col gap-3  p-2 flex-1">
           {messages.map((message) => {
             if (message.type === 'incoming') {
               if (message.thinking) {
@@ -48,7 +48,7 @@ export default function Chat({
                 );
               } else {
                 return (
-                  <div key={message.id} className="self-start border border-gray-200 rounded-lg p-4 bg-white max-h-[400px] overflow-y-auto">
+                  <div key={message.id} className="self-start border border-gray-200 rounded-lg p-4 bg-white max-h-[400px]">
                     <TypeWriter text={message.text} speed={4} />
                   </div>
                 );
@@ -57,7 +57,7 @@ export default function Chat({
 
             if (message.type === 'outgoing') {
               return (
-                <div key={message.id} className="self-end border border-gray-200 rounded-lg p-4 bg-indigo-50 max-h-[400px] overflow-y-auto">
+                <div key={message.id} className="self-end border border-gray-200 rounded-lg p-4 bg-indigo-50 max-h-[400px]">
                   {message.text}
                 </div>
               );
@@ -73,7 +73,7 @@ export default function Chat({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
           />
-          <button className="bg-blue-600 text-white rounded-full px-4 py-2 font-semibold shadow hover:bg-blue-700" type="submit">Send</button>
+          <button className="button font-semibold shadow text-sm p-3" type="submit">Send</button>
         </form>
       </div>
     </section>

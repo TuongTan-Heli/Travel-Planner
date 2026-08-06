@@ -191,8 +191,8 @@ export default function TripPlanner() {
     <section className="grid gap-6 w-full">
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 items-stretch">
         <div className="relative">
-          {systemState.processing && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-slate-800/60 to-indigo-700/60 backdrop-blur-sm">
+          {systemState.processing && connected && (
+            <div className="fixed inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-800/60 to-indigo-700/60 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-4 text-white text-center p-6">
                 <div className="w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-r from-sky-400 to-violet-500 shadow-lg animate-pulse">
                   <span className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
@@ -207,7 +207,9 @@ export default function TripPlanner() {
             <h2 className="text-lg font-semibold border-blue-500">Itinerary Preview</h2>
             {itinerary ? (
               <>
-                <TripCarousel data={itinerary} />
+
+                {!selectedStop && <TripCarousel data={itinerary} />
+                }
 
                 {selectedStop && (
                   <StopCard
@@ -232,22 +234,14 @@ export default function TripPlanner() {
         <div className="flex gap-2 mb-4">
           <button
             type="button"
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-              activeBottomPanel === 'chat'
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-            }`}
+            className={`button p-4 ${activeBottomPanel === 'chat' ? "active" : ""}`}
             onClick={() => setActiveBottomPanel('chat')}
           >
             Chat
           </button>
           <button
             type="button"
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-              activeBottomPanel === 'planner'
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-            }`}
+            className={`button p-4 ${activeBottomPanel === 'planner' ? "active" : ""}`}
             onClick={() => setActiveBottomPanel('planner')}
           >
             Planner
@@ -256,7 +250,7 @@ export default function TripPlanner() {
 
         <div className="flex flex-col">
           {activeBottomPanel === 'chat' ? (
-            <div className="bg-white rounded-xl p-4 shadow-sm h-[420px] overflow-auto">
+            <div className="bg-white rounded-xl p-4 shadow-sm h-[420px] overflow-y-auto">
               <Chat messages={messages} connected={connected} error={error} onSend={sendMessage} />
             </div>
           ) : (
