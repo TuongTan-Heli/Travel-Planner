@@ -35,7 +35,7 @@ export default function StopCard({ selectedStop, onStopSelect, onGoBack }: StopC
   };
 
   return (
-    <section className="flex flex-col gap-4 flex-1 mt-3 p-4 rounded-lg bg-gradient-to-br from-white to-slate-50 shadow-inner">
+    <section className="flex flex-col flex-1 mt-3 p-4 rounded-lg bg-gradient-to-br from-white to-slate-50 shadow-inner">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">{place.name}</h3>
@@ -54,7 +54,7 @@ export default function StopCard({ selectedStop, onStopSelect, onGoBack }: StopC
         </button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <p className="text-slate-600">{place.address}</p>
 
         {renderRatingStars(place.rating)}
@@ -75,6 +75,8 @@ export default function StopCard({ selectedStop, onStopSelect, onGoBack }: StopC
             ))}
           </div>
         ) : null}
+        {selectedStop.stop.description ? <span className="text-sm mt-2 text-slate-600">{selectedStop.stop.description}</span> : null}
+        {selectedStop.stop.whyVisit ? <span className="text-sm text-slate-600">{selectedStop.stop.whyVisit}</span> : null}
 
         {place.reviewSummary ? <p className="text-slate-700">{place.reviewSummary}</p> : null}
 

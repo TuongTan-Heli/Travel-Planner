@@ -207,9 +207,10 @@ export default function TripPlanner() {
             <h2 className="text-lg font-semibold border-blue-500">Itinerary Preview</h2>
             {itinerary ? (
               <>
-
-                {!selectedStop && <TripCarousel data={itinerary} />
-                }
+                <div className={selectedStop ? "hidden" : "block"}>
+                  //prevent use !selectedStop && to avoid unnecessary re-rendering 
+                  <TripCarousel data={itinerary} />
+                </div>
 
                 {selectedStop && (
                   <StopCard
@@ -225,7 +226,7 @@ export default function TripPlanner() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-md h-full">
+        <div className="bg-white rounded-xl p-6 shadow-md h-[420px] md:h-full">
           <InteractiveMap selectedStop={selectedStop} onStopSelect={setSelectedStop} />
         </div>
       </div>

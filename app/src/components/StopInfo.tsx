@@ -51,8 +51,8 @@ export default function StopInfo({ selectedStop, onAlternativeSelect }: StopInfo
                 </div>
             )}
 
-            {selectedStop.place.description && (
-                <p className="text-sm text-slate-600">{selectedStop.place.description}</p>
+            {selectedStop.stop.description && (
+                <p className="text-sm text-slate-600">{selectedStop.stop.description}</p>
             )}
 
             <button

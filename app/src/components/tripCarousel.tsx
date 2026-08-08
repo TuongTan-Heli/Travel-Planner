@@ -1,7 +1,7 @@
 import { useEffect, useState, type PointerEvent } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setActiveDayIndex } from '../store/itinerarySlice';
-import type { Itinerary } from '../models/itinerary';
+import type { Activity, Itinerary } from '../models/itinerary';
 
 interface TripCarouselProps {
   data?: Itinerary | null;
@@ -12,6 +12,7 @@ interface Slide {
   subtitle: string;
   body: string;
   dayIndex?: number;
+  activities?: Activity[];
 }
 
 export default function TripCarousel({ data }: TripCarouselProps) {
@@ -100,6 +101,16 @@ export default function TripCarousel({ data }: TripCarouselProps) {
               <p className="text-xs font-bold uppercase tracking-wide text-violet-600">{slide.subtitle}</p>
               <h4 className="text-base font-semibold text-slate-900">{slide.title}</h4>
               <p className="text-sm text-slate-600 whitespace-pre-line">{slide.body}</p>
+              {slide.activities && slide.activities.length > 0 && (
+                <div>
+                  <h5 className="text-md font-bold text-slate-800">Activities:</h5>
+                  <div className="text-sm text-slate-600">
+                    {slide.activities.map((activity, idx) => (
+                      <span key={idx}> {idx > 0 && " → "} {activity.place.name}</span> 
+                    ))}
+                  </div>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -151,6 +162,7 @@ function buildSlides(data?: Itinerary | null): Slide[] {
       subtitle: day.weather ?? 'Day Plan',
       body: `${day.summary}${day.tips.length ? `\n\nTips: ${day.tips.join(' • ')}` : ''}`,
       dayIndex: index,
+      activities: day.activities,
     });
   });
 

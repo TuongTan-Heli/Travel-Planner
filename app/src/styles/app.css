@@ -98,6 +98,8 @@ textarea {
 /* Tailwind utility fallbacks for older CRA / Tailwind pipeline issues */
 .grid { display: grid; }
 .flex { display: flex; }
+.hidden { display: none; }
+.block { display: block; }
 .flex-col { flex-direction: column; }
 .flex-1 { flex: 1 1 0%; }
 .flex-0 { flex: 0 0 auto; }
@@ -297,6 +299,7 @@ textarea {
 .md\:grid-cols-2 { /* fallback for when Tailwind isn't available; apply only at md+ widths */ }
 @media (min-width: 768px) {
   .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .md\:h-full { height: 100%; }
 }
 .to-slate-100 { --tw-gradient-to: #e2e8f0; }
 .from-slate-800\/60 { --tw-gradient-from: rgba(15, 23, 42, 0.6); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(15, 23, 42, 0)); }
