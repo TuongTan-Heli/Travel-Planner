@@ -208,7 +208,7 @@ export default function TripPlanner() {
             {itinerary ? (
               <>
                 <div className={selectedStop ? "hidden" : "block"}>
-                  //prevent use !selectedStop && to avoid unnecessary re-rendering 
+                  {/* prevent use !selectedStop && to avoid unnecessary re-rendering  */}
                   <TripCarousel data={itinerary} />
                 </div>
 

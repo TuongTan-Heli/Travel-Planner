@@ -1,4 +1,5 @@
 
+using TravelPlanner.Features.Map;
 using TravelPlanner.Features.Map.Model;
 
 namespace TravelPlanner.Features.Chat.Services;
@@ -9,10 +10,13 @@ public sealed class ScoringService
 
     private readonly Utils _utils;
 
-    public ScoringService(CurrencyExchangeService currencyExchangeService, Utils utils)
+    private readonly PlanningBudgetService _planningBudgetService;
+
+    public ScoringService(CurrencyExchangeService currencyExchangeService, Utils utils, PlanningBudgetService planningBudgetService)
     {
         _currencyExchangeService = currencyExchangeService;
         _utils = utils;
+        _planningBudgetService = planningBudgetService;
     }
     public async Task<List<Place>> ScorePlaces(
     List<Place> places,
@@ -22,14 +26,15 @@ public sealed class ScoringService
         {
             var weights = BuildWeights(session);
 
-            foreach (var place in places)
-            {
-                place.Score = await ScorePlace(place, session, weights);
-            }
+            var tasks = places.Select(async place =>
+                    {
+                        place.Score = await ScorePlace(place, session, weights);
+                        return place;
+                    });
 
-            session.Stage = TravelStage.SetupItinerary;
+            await Task.WhenAll(tasks);
 
-            return places.OrderByDescending(p => p.Score.TotalScore).ToList(); 
+            return places.OrderByDescending(p => p.Score.TotalScore).ToList();
         }
         catch (Exception ex)
         {
@@ -88,17 +93,11 @@ public sealed class ScoringService
 
     private double ScoreRating(Place place)
     {
-        double rating =
-            place.Rating / 5.0;
+        double rating = place.Rating / 5.0;
 
-        double popularity =
-            Math.Min(
-                place.UserRatingCount,
-                1000) / 1000.0;
+        double popularity = Math.Min(place.UserRatingCount, 1000) / 1000.0;
 
-        return
-            rating * 0.7 +
-            popularity * 0.3;
+        return rating * 0.7 + popularity * 0.3;
     }
 
     private async Task<double> ScoreBudget(
@@ -111,28 +110,54 @@ public sealed class ScoringService
         {
             return 1.0;
         }
-        var dailyBudget =
-       await GetDailyBudgetInPlaceCurrency(
-           session,
-           place.PriceRange?.StartPrice?.CurrencyCode ?? session.Context.Budget.CurrencyCode ?? "USD");
 
-        var allocation = GetBudgetAllocation(place.Category);
+        var targetCurrency =
+        place.PriceRange?.StartPrice?.CurrencyCode
+        ?? session.Context.Budget.CurrencyCode
+        ?? "AUD";
 
-        decimal minBudget = dailyBudget * allocation.Min;
-        decimal maxBudget = dailyBudget * allocation.Max;
+        var dailyBudget = await GetDailyBudgetInPlaceCurrency(session, targetCurrency);
+
+        var (minBudget, maxBudget) = GetBudgetPerPlace(place.Category, session.Context, dailyBudget);
 
         decimal budgetFit = ScoreBudgetFit(place, minBudget, maxBudget);
 
         decimal priceLevel = (decimal)ScorePriceLevel(place, session);
 
-        decimal score =
-            budgetFit * 0.5m +
-            priceLevel * 0.3m;
+        decimal score = budgetFit * 0.5m + priceLevel * 0.3m;
 
         return (double)score;
     }
 
-    private async Task<decimal> GetDailyBudgetInPlaceCurrency(
+    private (decimal Min, decimal Max) GetBudgetPerPlace(
+    PlaceCategory category,
+    TravelPromptContext context,
+    decimal dailyBudget)
+    {
+        var allocation = _planningBudgetService.GetBudgetAllocation(category);
+
+        var count = _utils.GetPlaceCount(category, context.TravelFrequency);
+
+        var travelers = context.Travelers ?? 1;
+
+        var travelerDivisor = _planningBudgetService.IsPerPersonCategory(category)
+                ? travelers
+                : 1;
+
+        var min = dailyBudget *
+            allocation.Min /
+            count.Max /
+            travelerDivisor;
+
+        var max = dailyBudget *
+            allocation.Max /
+            count.Min /
+            travelerDivisor;
+
+        return (min, max);
+    }
+
+    public async Task<decimal> GetDailyBudgetInPlaceCurrency(
     TravelSession session,
     string targetCurrency)
     {
@@ -147,7 +172,7 @@ public sealed class ScoringService
         return converted / session.Context.Days!.Value;
     }
 
-    private static (decimal Min, decimal Max) GetBudgetAllocation(PlaceCategory category)
+    public (decimal Min, decimal Max) GetBudgetAllocation(PlaceCategory category)
     {
         return category switch
         {
@@ -169,9 +194,7 @@ public sealed class ScoringService
             return 0.8m;
         }
 
-        decimal avgPrice =
-            (place.PriceRange.StartPrice.Units +
-             place.PriceRange.EndPrice.Units) / 2m;
+        decimal avgPrice = (place.PriceRange.StartPrice.Units + place.PriceRange.EndPrice.Units) / 2m;
 
         if (avgPrice <= minBudget)
             return 1.2m;
@@ -189,17 +212,11 @@ public sealed class ScoringService
         };
     }
 
-    private double ScorePriceLevel(
-    Place place,
-    TravelSession session)
+    private double ScorePriceLevel(Place place, TravelSession session)
     {
-        bool preferCheap =
-            session.Context.Preferences
-                .Contains("Cheap", StringComparer.OrdinalIgnoreCase);
+        bool preferCheap = session.Context.Preferences.Contains("Cheap", StringComparer.OrdinalIgnoreCase);
 
-        bool preferLuxury =
-            session.Context.Preferences
-                .Contains("Luxury", StringComparer.OrdinalIgnoreCase);
+        bool preferLuxury = session.Context.Preferences.Contains("Luxury", StringComparer.OrdinalIgnoreCase);
 
         if (preferCheap)
         {
@@ -238,22 +255,17 @@ public sealed class ScoringService
         };
     }
 
-    private double ScoreInterest(
-    Place place,
-    TravelSession session)
+    private double ScoreInterest(Place place, TravelSession session)
     {
         if (!session.Context.Interests.Any())
             return 1;
 
-        var matches =
-            session.Context.Interests.Count(i =>
+        var matches = session.Context.Interests.Count(i =>
                 MapVariables.InterestTypes[i]
                     .Intersect(place.Types)
                     .Any());
 
-        return
-            matches /
-            (double)session.Context.Interests.Count;
+        return matches / (double)session.Context.Interests.Count;
     }
 
     private double ScoreRoute(
@@ -270,16 +282,15 @@ public sealed class ScoringService
                                 place.PlaceCluster?.Center.Latitude ?? 0,
                                 place.PlaceCluster?.Center.Longitude ?? 0);
 
-        return 5 - (distance * 0.1);
+        return Math.Max(0, 1.0 - distance / 5000.0);
     }
 
 
-    private ScoreWeights BuildWeights(
-    TravelSession session)
+    private ScoreWeights BuildWeights(TravelSession session)
     {
         var w = new ScoreWeights();
 
-        if (session.Context.Preferences.Contains("Review"))
+        if (session.Context.Preferences.Contains("Good Review"))
             w.Rating *= 1.5;
 
         if (session.Context.Preferences.Contains("Convenient"))

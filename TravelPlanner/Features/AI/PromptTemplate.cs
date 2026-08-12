@@ -34,12 +34,12 @@ public class PromptTemplate
                         "units: null,
                         "currencyCode": ""
                         }
-            "currency": null,
             "travelers": null,
             "interests": [],
             "preferences": [],
-            "missingFields": [],
-            "assistantMessage": ""
+            "minRating": null,
+            "assistantMessage": "",
+            "travelFrequency": null,
             }
 
             Rules:
@@ -56,12 +56,12 @@ public class PromptTemplate
                 isTravelRelated = false
                 isReadyForPlanning = false
                 assistantMessage = "I don't know much about {topic}. I can only help with travel planning. Where would you like to travel?"
-            - Default currency USD
-            - User interest only contain these values {{string.Join(", ", MapVariables.InterestCategories)}}
-            - User preferences only contain these values {{string.Join(", ", MapVariables.PreferenceCategories)}}
+            - User interest must only contain these values {{string.Join(", ", MapVariables.InterestCategories)}}
+            - User preferences must only contain these values {{string.Join(", ", MapVariables.PreferenceCategories)}}
+            - User travelFrequency must only contain these values {{string.Join(", ", Enum.GetNames(typeof(TravelFrequency)))}}
             - budget.units must be a number only (no commas, symbols, or text).
             - budget.currencyCode must be a valid ISO-4217 currency code (USD, AUD, EUR, VND, JPY, GBP, etc.).
-            - If the user does not specify a currency, use "USD".
+            - If the user does not specify a currency, use "AUD".
             - If the budget is unknown, return: "budget": null
             - Can auto-generate country if user provide destination
             - If user provides a country but no destination, ask user to provide a destination, if user does not provide a destination then, return destination = user's provided country.
@@ -292,7 +292,7 @@ public class PromptTemplate
                 - copy every hotel.
                 - copy every activity place.
                 - copy stopType.
-                - copy durationHours.
+                - copy durationHours, if null -> 0
                 - copy travelMinutesFromPrevious.
 
                 Only generate:

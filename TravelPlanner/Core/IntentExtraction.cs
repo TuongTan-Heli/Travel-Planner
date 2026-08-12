@@ -53,7 +53,6 @@ public sealed class IntentExtractionService
                 : result.AssistantMessage,
 
             IsReadyForPlanning = ready,
-
             IntentResult = result
         };
     }
@@ -89,12 +88,21 @@ public sealed class IntentExtractionService
                 .Union(result.Interests)
                 .ToList();
         }
-
         if (result.Preferences?.Count > 0)
         {
             ctx.Preferences = ctx.Preferences
                 .Union(result.Preferences)
                 .ToList();
+        }
+        
+        if (result.MinRating.HasValue)
+        {
+            ctx.MinRating = result.MinRating;
+        }
+
+        if (result.TravelFrequency.HasValue)
+        {
+            ctx.TravelFrequency = result.TravelFrequency;
         }
     }
 }

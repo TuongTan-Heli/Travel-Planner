@@ -10,7 +10,8 @@ public class MapService
 {
     private readonly HttpClient _httpClient;
     private readonly Utils _utils;
-    private readonly ScoringService _scoringService;
+    private readonly PlanningBudgetService _planningBudgetService;
+    private readonly CurrencyExchangeService _currencyExchangeService;
     private readonly string _path;
     private readonly string _searchNearbyUrl;
     private readonly string _searchTextUrl;
@@ -24,11 +25,12 @@ public class MapService
     };
 
 
-    public MapService(HttpClient httpClient, Utils utils, ScoringService scoringService)
+    public MapService(HttpClient httpClient, Utils utils, PlanningBudgetService planningBudgetService, CurrencyExchangeService currencyExchangeService)
     {
         _httpClient = httpClient;
         _utils = utils;
-        _scoringService = scoringService;
+        _planningBudgetService = planningBudgetService;
+        _currencyExchangeService = currencyExchangeService;
         _searchNearbyUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_NEARBY_API_URL") ?? string.Empty;
         _searchTextUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_TEXT_API_URL") ?? string.Empty;
         _path = Environment.GetEnvironmentVariable("GOOGLE_ACCESS_PATH") ?? string.Empty;
@@ -49,7 +51,7 @@ public class MapService
             .GetAccessTokenForRequestAsync();
     }
 
-    public async Task<List<Place>> GetMapDataAsync(List<PlaceCluster> clusters, TravelPromptContext context)
+    public async Task<List<Place>> GetMapDataAsync(List<PlaceCluster> clusters, TravelSession session)
     {
         try
         {
@@ -62,7 +64,7 @@ public class MapService
                 var places = await GetCorePlaces(
                     cluster,
                     token,
-                    context);
+                    session);
 
                 clusterPlaces.Add(places);
             }
@@ -74,7 +76,7 @@ public class MapService
                     clusters[i],
                     clusterPlaces[i],
                     token,
-                    context);
+                    session);
             }
 
 
@@ -94,7 +96,7 @@ public class MapService
     private async Task<List<Place>> GetCorePlaces(
     PlaceCluster cluster,
     string token,
-    TravelPromptContext context)
+    TravelSession session)
     {
         var result = new List<Place>();
 
@@ -104,7 +106,6 @@ public class MapService
         MapVariables.PrimaryRestaurantTypes,
     };
 
-
         foreach (var type in types)
         {
             var places = await GetPlacesAsync(
@@ -113,13 +114,13 @@ public class MapService
                 cluster.Center.Longitude,
                 token,
                 50000,
+                session,
                 type,
                 []);
 
 
             result = MergePlaces(result, places);
         }
-
 
         return result;
     }
@@ -128,21 +129,17 @@ public class MapService
     PlaceCluster cluster,
     List<Place> places,
     string token,
-    TravelPromptContext context)
+    TravelSession session)
     {
 
         var attempts = 0;
 
-
         while (attempts < 5)
         {
-
             var missing = GetMissingCategories(places);
-
 
             if (!missing.Any())
                 break;
-
 
             foreach (var category in missing)
             {
@@ -166,8 +163,9 @@ public class MapService
                     cluster.Center.Longitude,
                     token,
                     GetRadius(category),
+                    session,
                     types,
-                    category == PlaceCategory.Travel ? BuildInterests(context.Interests) : []);
+                    category == PlaceCategory.Travel ? BuildInterests(session.Context.Interests) : []);
                 places.AddRange(
                     MergePlaces([], results)
                 );
@@ -225,8 +223,10 @@ public class MapService
     double lon,
     string token,
     int rad,
+    TravelSession session,
     List<string> primaryTypes,
-    List<string>? types = null)
+    List<string>? types = null,
+    double? minRating = 3)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, _searchNearbyUrl);
 
@@ -274,7 +274,80 @@ public class MapService
                     PropertyNameCaseInsensitive = true
                 });
 
-        return result?.Places == null ? [] : MapResponse(result.Places, cluster);
+        var places = result?.Places == null ? [] : MapResponse(result.Places, cluster);
+
+        if (minRating.HasValue)
+        {
+            places = places
+                .Where(p => p.Rating >= minRating.Value)
+                .ToList();
+        }
+
+        places = await FilterByBudgetAsync(places, session.Context);
+
+        return places;
+    }
+
+    private async Task<List<Place>> FilterByBudgetAsync(
+    List<Place> places,
+    TravelPromptContext context)
+    {
+        var result = new List<Place>();
+
+        foreach (var place in places)
+        {
+            if (await IsWithinBudgetRangeAsync(place, context))
+            {
+                result.Add(place);
+            }
+        }
+
+        return result;
+    }
+
+    private async Task<bool> IsWithinBudgetRangeAsync(
+    Place place,
+    TravelPromptContext context)
+    {
+        if (context.Budget?.Units is null ||
+            context.Days is null ||
+            context.Days <= 0)
+        {
+            return true;
+        }
+
+        if (place.PriceRange?.StartPrice?.Units is null ||
+            place.PriceRange?.EndPrice?.Units is null)
+        {
+            return true;
+        }
+
+        var targetCurrency = place.PriceRange.StartPrice.CurrencyCode
+            ?? context.Budget.CurrencyCode
+            ?? "USD";
+
+        var budgetCurrency = context.Budget.CurrencyCode ?? "USD";
+
+        var convertedBudget = await _currencyExchangeService.ConvertAsync(
+                context.Budget.Units,
+                budgetCurrency,
+                targetCurrency);
+
+        var dailyBudget = convertedBudget / context.Days.Value;
+
+        var allocation = _planningBudgetService.GetBudgetAllocation(place.Category);
+
+        var travelers = context.Travelers ?? 1;
+
+        var maxBudget = dailyBudget * allocation.Max / travelers;
+
+        const decimal tolerance = 1.5m;
+
+        var allowedMaximum = maxBudget * tolerance;
+
+        var avgPrice = (place.PriceRange.StartPrice.Units + place.PriceRange.EndPrice.Units) / 2m;
+
+        return avgPrice <= allowedMaximum;
     }
 
     private static List<Place> MapResponse(List<GooglePlace> places, PlaceCluster? cluster)
@@ -499,8 +572,8 @@ public class MapService
 
         foreach (var cluster in clusters)
         {
-            cluster.Places = await _scoringService.ScorePlaces(cluster.Places, session);
-            var center = cluster.Places.OrderByDescending(p => p.Score.TotalScore).First();
+            // cluster.Places = await _scoringService.ScorePlaces(cluster.Places, session);
+            var center = cluster.Places.OrderByDescending(p => p.Rating).First();
 
             cluster.Center = center.Location;
         }

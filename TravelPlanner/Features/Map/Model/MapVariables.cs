@@ -241,7 +241,7 @@ public static class MapVariables
 
     public static readonly string[] PreferenceCategories =
     [
-            "Review",
+            "Good Review",
             "Cheap",
             "Luxury",
             "Convenient",

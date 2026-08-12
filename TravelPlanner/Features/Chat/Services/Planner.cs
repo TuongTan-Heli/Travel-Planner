@@ -32,18 +32,21 @@ public sealed class Planner
         {
             await _utils.BroadcastStateAsync(socket, true, "Selecting best location");
             response.TripPlanningData = await _travelPlanningService.BuildPlanningDataAsync(session);
+            session.Stage = TravelStage.Scoring;
         }
 
         if (session.Stage == TravelStage.Scoring)
         {
             await _utils.BroadcastStateAsync(socket, true, "Scoring places");
             response.TripPlanningData.RecommendedPlaces = await _scoringService.ScorePlaces(response.TripPlanningData.RecommendedPlaces, session);
+            session.Stage = TravelStage.SetupItinerary;
         }
 
         if (session.Stage == TravelStage.SetupItinerary)
         {
             await _utils.BroadcastStateAsync(socket, true, "Setting up your trip");
             response.Itinerary = await _setupItineraryService.Setup(response, session);
+            session.Stage = TravelStage.FinalPresentation;
         }
 
         if (session.Stage == TravelStage.FinalPresentation)

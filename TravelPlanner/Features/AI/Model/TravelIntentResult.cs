@@ -6,7 +6,6 @@ public class TravelIntentResult
     public string? Country { get; set; }
     public int? Days { get; set; }
     public Money? Budget { get; set; }
-    public string? Currency { get; set; }
     public int? Travelers { get; set; }
     public bool IsTravelRelated { get; set; }
     public bool IsReadyForPlanning { get; set; }
@@ -14,7 +13,15 @@ public class TravelIntentResult
     public String? EndDate { get; set; }
     public List<string> Interests { get; set; } = [];
     public List<string> Preferences { get; set; } = [];
-    public List<string> MissingFields { get; set; } = [];
+    public double? MinRating { get; set; } = null;
     public string AssistantMessage { get; set; } = "";
     public string NextAction { get; set; } = "";
+    public TravelFrequency? TravelFrequency { get; set; } = null;
+}
+
+public enum TravelFrequency
+{
+    High,
+    Medium,
+    Low
 }

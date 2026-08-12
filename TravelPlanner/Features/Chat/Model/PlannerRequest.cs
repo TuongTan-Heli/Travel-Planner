@@ -18,11 +18,13 @@ public class PlannerRequest
 
     public int? Travelers { get; set; }
 
-    public double? Rating { get; set; }
+    public double? MinRating { get; set; }
 
     public List<string> Interests { get; set; } = [];
 
-    public int? Frequency { get; set; }
+    public List<string> Preferences { get; set; } = [];
+
+    public TravelFrequency? TravelFrequency { get; set; }
 
     public void ApplyTo(TravelSession session)
     {
@@ -46,7 +48,11 @@ public class PlannerRequest
 
         session.Context.Interests = Interests;
 
-        session.Context.Rating = Rating;
+        session.Context.Preferences = Preferences;
+
+        session.Context.MinRating = MinRating;
+
+        session.Context.TravelFrequency = TravelFrequency;
     }
 
     private static DateTime? ParseDate(string? date)

@@ -37,11 +37,10 @@ public sealed class TravelPlanningService
             weatherTask = _weatherService.GetRecommendedTimeAsync(clusters, session.Context);
         }
 
-        var placesTask = _mapService.GetMapDataAsync(clusters, session.Context);
+        var placesTask = _mapService.GetMapDataAsync(clusters, session);
 
-        await Task.WhenAll(weatherTask, placesTask); 
+        await Task.WhenAll(weatherTask, placesTask);
 
-        session.Stage = TravelStage.Scoring;
         return new TripPlanningData
         {
             TravelTime = weatherTask.Result,

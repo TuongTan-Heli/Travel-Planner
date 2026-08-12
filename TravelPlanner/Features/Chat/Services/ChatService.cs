@@ -37,7 +37,7 @@ public class ChatService
             url = CreateUrl(url);
         }
 
-        // Minimal request payload — adjust if your model expects a different schema
+      
         var payload = new
         {
             contents = new[]
@@ -227,7 +227,7 @@ public class ChatService
         return builder.ToString();
     }
 
-    private String CreateUrl(String url)
+    private string CreateUrl(String url)
     {
         return url.Contains("?") ? $"{url}&key={_apiKey}" : $"{url}?key={_apiKey}";
     }

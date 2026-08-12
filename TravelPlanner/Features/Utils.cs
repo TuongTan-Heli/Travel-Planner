@@ -179,5 +179,37 @@ public class Utils
             CancellationToken.None
         );
     }
+    public (int Min, int Max) GetTravelPlaceCount(
+        TravelFrequency? frequency)
+    {
+        return frequency switch
+        {
+            TravelFrequency.High => (5, 6),
+            TravelFrequency.Medium => (3, 4),
+            TravelFrequency.Low => (1, 2),
+            _ => (3, 4)
+        };
+    }
 
+    public (int Min, int Max) GetPlaceCount(
+        PlaceCategory category,
+        TravelFrequency? frequency)
+    {
+        return category switch
+        {
+            PlaceCategory.Travel => frequency switch
+            {
+                TravelFrequency.High => (5, 6),
+                TravelFrequency.Medium => (3, 4),
+                TravelFrequency.Low => (1, 2),
+                _ => (3, 4)
+            },
+
+            PlaceCategory.Restaurant => (2, 3),
+
+            PlaceCategory.Hotel => (1, 1),
+
+            _ => (1, 1)
+        };
+    }
 }
