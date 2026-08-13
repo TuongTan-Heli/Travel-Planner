@@ -39,7 +39,6 @@
 }
 
 .form-group input,
-.form-group select,
 .form-group .interest-select {
   width: 100%;
   padding: 1rem 1rem;
@@ -48,6 +47,24 @@
   font-size: 1rem;
   color: #0f172a;
   background: #f8fafc;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 1rem 1rem;
+  padding-right: 2.6rem;
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+  font-size: 1rem;
+  color: #0f172a;
+  background: #f8fafc;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23222' stroke-width='1.6'><path d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  background-size: 1rem;
 }
 
 .form-group input:focus,

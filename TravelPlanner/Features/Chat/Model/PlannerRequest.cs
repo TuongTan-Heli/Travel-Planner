@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using TravelPlanner.Features.Map.Model;
 
 namespace TravelPlanner.Features.Chat.Models;
@@ -18,12 +19,13 @@ public class PlannerRequest
 
     public int? Travelers { get; set; }
 
-    public double? MinRating { get; set; }
+    public double? Rating { get; set; }
 
     public List<string> Interests { get; set; } = [];
 
     public List<string> Preferences { get; set; } = [];
-
+    
+    [JsonPropertyName("frequency")]
     public TravelFrequency? TravelFrequency { get; set; }
 
     public void ApplyTo(TravelSession session)
@@ -50,7 +52,7 @@ public class PlannerRequest
 
         session.Context.Preferences = Preferences;
 
-        session.Context.MinRating = MinRating;
+        session.Context.MinRating = Rating;
 
         session.Context.TravelFrequency = TravelFrequency;
     }

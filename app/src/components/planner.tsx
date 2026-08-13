@@ -9,10 +9,11 @@ export interface PlannerRequest {
   startDate?: string;
   endDate?: string;
   days?: number;
-  travelers?: number;
+  travelers: number;
   rating?: number;
   interests: string[];
-  frequency?: number;
+  preferences?: string[];
+  frequency?: string;
   haveTimeRange: boolean;
 }
 
@@ -33,6 +34,19 @@ export const INTEREST_OPTIONS = [
   { value: "relaxation", label: "🧘 Relaxation" }
 ];
 
+export const PREFERENCE_OPTIONS = [
+  { value: "Luxury", label: "💎 Luxury" },
+  { value: "Cheap", label: "💰 Budget" },
+  { value: "Good Review", label: "⭐ Good Review" },
+  { value: "Convenient", label: "🚌 Convenient" },
+]
+
+export const FREQUENCY_OPTIONS = [
+  { value: "High", label: "High" },
+  { value: "Medium", label: "Medium" },
+  { value: "Low", label: "Low" }
+]
+
 interface Currency {
   code: string;
   name: string;
@@ -49,6 +63,9 @@ export default function Planner({ onSubmit }: PlannerProps) {
   const [days, setDays] = useState(1);
   const [rating, setRating] = useState(0);
   const [interests, setInterests] = useState<{ value: string; label: string }[]>([]);
+  const [preferences, setPreferences] = useState<{ value: string; label: string }[]>([]);
+  const [frequency, setFrequency] = useState("Medium");
+  const [travelers, setTravelers] = useState<number>(1);
 
   useEffect(() => {
     loadCurrencies();
@@ -111,7 +128,10 @@ export default function Planner({ onSubmit }: PlannerProps) {
       endDate: haveTimeRange ? endDate : undefined,
       days: !haveTimeRange ? Number(days) : undefined,
       rating,
-      interests: interests.map(x => x.value)
+      interests: interests.map(x => x.value),
+      preferences: preferences.map(x => x.value),
+      frequency: frequency ? frequency : undefined,
+      travelers: travelers
     };
     onSubmit(request);
   };
@@ -139,6 +159,7 @@ export default function Planner({ onSubmit }: PlannerProps) {
               type="number"
               placeholder="Budget"
               value={budget}
+              min={0}
               onChange={e => setBudget(Number(e.target.value))}
             />
           </div>
@@ -156,6 +177,16 @@ export default function Planner({ onSubmit }: PlannerProps) {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label>Number of Travelers</label>
+          <input
+            type="number"
+            min={1}
+            value={travelers}
+            onChange={e => setTravelers(Number(e.target.value))}
+          />
         </div>
 
         <div className="duration-toggle">
@@ -203,6 +234,19 @@ export default function Planner({ onSubmit }: PlannerProps) {
         )}
 
         <div className="form-group">
+          <label>Travel Frequency</label>
+          <select
+            value={frequency}
+            onChange={e => setFrequency(e.target.value)}>
+            {FREQUENCY_OPTIONS.map(f => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
           <label>Interests</label>
           <Select
             isMulti
@@ -210,6 +254,18 @@ export default function Planner({ onSubmit }: PlannerProps) {
             value={interests}
             onChange={(value) => setInterests([...value])}
             placeholder="Select your interests..."
+            className="interest-select"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Preferences</label>
+          <Select
+            isMulti
+            options={PREFERENCE_OPTIONS}
+            value={preferences}
+            onChange={(value) => setPreferences([...value])}
+            placeholder="Select your preferences..."
             className="interest-select"
           />
         </div>
