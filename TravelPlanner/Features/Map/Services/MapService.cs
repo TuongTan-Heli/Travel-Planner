@@ -89,6 +89,7 @@ public class MapService
         {
             throw new AppException(
                 "MAP_SERVICE_ERROR",
+                "Failed to retrieve map, location data.",
                 ex.Message);
         }
     }
@@ -264,6 +265,7 @@ public class MapService
         {
             throw new AppException(
                 "MAP_API_ERROR",
+                "Something went wrong while retrieving data from Google Places API, please try again later.",
                 $"Google Places failed {(int)response.StatusCode}: {raw}");
         }
 
@@ -511,10 +513,12 @@ public class MapService
     TravelSession session)
     {
         var location = session.Context.Destination ?? throw new AppException(
-            "INSUFFICIENT_DATA",
+            "MAP_INSUF_DATA",
+            "Destination is required for planning.",
             "Destination is required for planning.");
         var country = session.Context.Country ?? throw new AppException(
-            "INSUFFICIENT_DATA",
+            "MAP_INSUF_DATA",
+            "Country is required for planning.",
             "Country is required for planning.");
         var days = session.Context.Days ?? 1;
 
@@ -537,6 +541,7 @@ public class MapService
         {
             throw new AppException(
                 "MAP_API_ERROR",
+                "Something went wrong while retrieving data from Google Places API, please try again later.",
                 $"Google Places failed {(int)response.StatusCode}: {raw}");
         }
 
@@ -552,6 +557,7 @@ public class MapService
         {
             throw new AppException(
                 "MAP_API_ERROR",
+                "Found no places for the given destination and country.",
                 $"Google Places returned no places for '{location}, {country}'.");
         }
 

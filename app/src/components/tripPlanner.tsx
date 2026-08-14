@@ -128,7 +128,7 @@ export default function TripPlanner() {
           break;
 
         case "Error":
-          setError(message.message);
+          setError(`${message.code}: ${message.displayMessage}`);
           break;
       }
 
@@ -191,6 +191,7 @@ export default function TripPlanner() {
     <section className="grid gap-6 w-full">
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 items-stretch">
         <div className="relative">
+
           {systemState.processing && connected && (
             <div className="fixed inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-800/60 to-indigo-700/60 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-4 text-white text-center p-6">
@@ -247,12 +248,13 @@ export default function TripPlanner() {
           >
             Planner
           </button>
+          {error && <span className="text-red-500 ml-2 align-content-center" >{error}</span>}
         </div>
 
         <div className="flex flex-col">
           {activeBottomPanel === 'chat' ? (
             <div className="bg-white rounded-xl p-4 shadow-sm h-[420px] overflow-y-auto">
-              <Chat messages={messages} connected={connected} error={error} onSend={sendMessage} />
+              <Chat messages={messages} connected={connected} onSend={sendMessage} />
             </div>
           ) : (
             <div className="bg-white rounded-xl p-4 shadow-sm">

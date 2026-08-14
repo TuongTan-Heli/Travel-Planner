@@ -38,6 +38,7 @@ public class WeatherService
         {
             throw new AppException(
                 "INVALID_DATE_RANGE",
+                "start and end dates are required.",
                 "StartDate and EndDate are required.");
         }
 
@@ -160,6 +161,7 @@ public class WeatherService
         return await _httpClient.GetFromJsonAsync<HistoricalWeatherResponse>(url)
             ?? throw new AppException(
                 "WEATHER_API_ERROR",
+                "Failed to retrieve historical weather for the location.",
                 $"Failed to retrieve historical weather for the following location, long: {cluster.Center.Longitude} , lat: {cluster.Center.Latitude}");
     }
     private bool CanForecast(DateTime start, DateTime end)
@@ -190,6 +192,7 @@ public class WeatherService
         return await _httpClient.GetFromJsonAsync<ForecastResponse>(url)
             ?? throw new AppException(
                 "WEATHER_API_ERROR",
+                "Failed to retrieve weatherforecast for the location.",
                 $"Failed to retrieve forecast for the following location, long: {cluster.Center.Longitude} , lat: {cluster.Center.Latitude}");
     }
 

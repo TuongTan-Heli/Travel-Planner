@@ -37,7 +37,7 @@ public class ChatService
             url = CreateUrl(url);
         }
 
-      
+
         var payload = new
         {
             contents = new[]
@@ -57,7 +57,7 @@ public class ChatService
             }
         };
 
-        
+
 
         const int maxAttempts = 6;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -80,6 +80,7 @@ public class ChatService
                         {
                             throw new AppException(
                                 "API_RATE_LIMIT",
+                                "API rate limit exceeded for models, please try again later.",
                                 "Rate limit exceeded for all available API endpoints.");
                         }
 
@@ -99,6 +100,7 @@ public class ChatService
                         {
                             throw new AppException(
                                 "API_RATE_LIMIT",
+                                "API rate limit exceeded for models, please try again later.",
                                 "Rate limit exceeded for all available API endpoints.");
                         }
 
@@ -108,6 +110,7 @@ public class ChatService
 
                     throw new AppException(
                         "API_ERROR",
+                        "Something went wrong from our end, please try again later.",
                         $"API returned {resp.StatusCode}: {respText}");
                 }
 
@@ -156,7 +159,7 @@ public class ChatService
                 }
                 catch
                 {
-                    throw new AppException("API_RESP", respText);
+                    throw new AppException("API_RESP", "Failed to analyze response from AI", respText);
                 }
             }
             catch (AppException)
@@ -165,11 +168,11 @@ public class ChatService
             }
             catch (Exception ex)
             {
-                throw new AppException("API_ERROR", ex.Message, ex);
+                throw new AppException("API_ERROR", "Something went wrong from our end, please try again later.", ex.Message, ex);
             }
         }
 
-        throw new AppException("API_RATE_LIMIT", "Rate limit exceeded for all available API endpoints.");
+        throw new AppException("API_RATE_LIMIT", "API rate limit exceeded for models, please try again later.", "Rate limit exceeded for all available API endpoints.");
     }
 
     public void ClearSessionHistory(TravelSession? session)

@@ -15,6 +15,7 @@ public sealed class ChatWebSocketService
     private readonly ChatService _chatService;
     private readonly Utils _utils;
     private readonly Planner _planner;
+    private readonly ILogger<ChatWebSocketService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions =
     new()
@@ -26,12 +27,13 @@ public sealed class ChatWebSocketService
             new JsonStringEnumConverter()
         }
     };
-    public ChatWebSocketService(IntentExtractionService intentExtractionService, ChatService chatService, Utils utils, Planner planner)
+    public ChatWebSocketService(IntentExtractionService intentExtractionService, ChatService chatService, Utils utils, Planner planner, ILogger<ChatWebSocketService> logger)
     {
         _intentExtractionService = intentExtractionService;
         _chatService = chatService;
         _utils = utils;
         _planner = planner;
+        _logger = logger;
     }
     private TravelSession GetSession(WebSocket socket)
     {
@@ -67,12 +69,14 @@ public sealed class ChatWebSocketService
                 JsonOptions)
             ?? throw new AppException(
                 "WS_INVALID_CHAT",
+                "Cannot deserialize chat message, please try again.",
                 "Invalid chat message.");
 
         if (string.IsNullOrWhiteSpace(input.Text))
             throw new AppException(
                 "WS_EMPTY",
-                "Message cannot be empty.");
+                "Message cannot be empty.",
+                "Chat message cannot be empty.");
 
         var session = GetSession(socket);
 
@@ -101,12 +105,14 @@ public sealed class ChatWebSocketService
         var envelope = JsonSerializer.Deserialize<MessageEnvelope>(messageJson, JsonOptions)
         ?? throw new AppException(
             "WS_INVALID",
-            "Invalid message");
+            "Invalid message",
+            "Received invalid message format.");
 
         var request = envelope.Data.Deserialize<PlannerRequest>(JsonOptions)
         ?? throw new AppException(
             "WS_INVALID_PLANNER",
-            "Invalid planner request");
+            "Invalid planner request",
+            "Received invalid planner request format.");
 
         var session = GetSession(socket);
 
@@ -137,7 +143,7 @@ public sealed class ChatWebSocketService
                 {
                     if (count >= buffer.Length)
                     {
-                        throw new AppException("WS_MSG_TOO_LARGE", "WebSocket message too large.");
+                        throw new AppException("WS_MSG_TOO_LARGE", "Message too large.", "WebSocket message too large.");
                     }
 
                     result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer, count, buffer.Length - count), CancellationToken.None);
@@ -153,8 +159,28 @@ public sealed class ChatWebSocketService
                 await HandleIncomingMessageAsync(socket, messageJson);
             }
         }
-        catch (WebSocketException) { }
-        catch (OperationCanceledException) { }
+        catch (AppException ex)
+        {
+            await HandleWebSocketErrorAsync(socket, ex);
+        }
+        catch (WebSocketException ex)
+        {
+            // Connection-level WebSocket error
+            Console.WriteLine($"WebSocket error: {ex.Message}");
+        }
+        catch (OperationCanceledException)
+        {
+            // Connection cancelled
+        }
+        catch (Exception ex)
+        {
+            await HandleWebSocketErrorAsync(
+                socket,
+                new AppException(
+                    "WS_INTERNAL",
+                    "Something went wrong. Please try again.",
+                    ex.Message));
+        }
     }
     private async Task CloseSocketAsync(WebSocket socket)
     {
@@ -187,6 +213,7 @@ public sealed class ChatWebSocketService
         {
             throw new AppException(
                 "WS_DESERIALIZE",
+                "Failed to analyze message, please try again.",
                 $"Failed to deserialize message: {ex.Message}");
         }
 
@@ -203,6 +230,7 @@ public sealed class ChatWebSocketService
             default:
                 throw new AppException(
                     "WS_INVALID_TYPE",
+                    "Invalid message type, please try again.",
                     "Unknown websocket message type.");
         }
     }
@@ -214,14 +242,12 @@ public sealed class ChatWebSocketService
     {
         var thinkingId = Guid.NewGuid().ToString();
 
-        var extractionTask =
-            _intentExtractionService.ExtractAsync(
+        var extractionTask = _intentExtractionService.ExtractAsync(
                 session,
                 response,
                 prompt);
 
-        var animationTask =
-            RunThinkingAnimationAsync(
+        var animationTask = RunThinkingAnimationAsync(
                 socket,
                 thinkingId,
                 extractionTask);
@@ -295,6 +321,44 @@ public sealed class ChatWebSocketService
 
             index = (index + 1) % dots.Length;
             await Task.Delay(600);
+        }
+    }
+
+    private async Task HandleWebSocketErrorAsync(
+    WebSocket socket,
+    AppException exception)
+    {
+        var session = GetSession(socket);
+
+        _logger.LogError(
+            exception,
+            "WebSocket Application Error. Code={Code}. Message={Message}",
+            exception.Code,
+            exception.Message);
+
+        // Reset session so the user can start again
+        session.Stage = TravelStage.IntentExtraction;
+        session.Context = new TravelPromptContext();
+
+        if (socket.State != WebSocketState.Open)
+        {
+            return;
+        }
+
+        try
+        {
+            var errorMessage = new ErrorMessage
+            {
+                Type = WebSocketMessType.Error,
+                Code = exception.Code,
+                DisplayMessage = exception.DisplayMessage
+            };
+
+            await _utils.BroadcastAsync(socket, errorMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send WebSocket error message. Code={Code}", exception.Code);
         }
     }
 }

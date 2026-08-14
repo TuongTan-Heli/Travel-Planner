@@ -34,7 +34,8 @@ export interface SystemStateWebSocketMessage extends BaseWebSocketMessage {
 
 export interface ErrorWebSocketMessage extends BaseWebSocketMessage {
     kind: "Error";
-    message: string;
+    displayMessage: string;
+    code: string;
 }
 
 export interface OutgoingMessage {

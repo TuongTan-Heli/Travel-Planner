@@ -92,6 +92,7 @@ public class Utils
         {
             throw new AppException(
                 "LOCATION_NOT_FOUND",
+                "Could not find coordinates for provided location.",
                 $"Could not find coordinates for {location}");
         }
 

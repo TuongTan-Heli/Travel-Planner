@@ -35,7 +35,8 @@ public class PresentationService
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                     NumberHandling = JsonNumberHandling.AllowReadingFromString
                 }) ?? throw new AppException(
-                    "PRESENTATION_PARSE_ERROR",
+                    "PRES_PARSE_ERROR",
+                    "Failed to finalize final presentation result.",
                     "Failed to parse final presentation result.");
 
 
@@ -54,7 +55,7 @@ public class PresentationService
         catch (JsonException ex)
         {
             throw new AppException(
-        "PRESENTATION_PARSE_ERROR",
+        "PRES_PARSE_ERROR",
         $"""
         Failed to deserialize FinalPresentation.
 
@@ -65,12 +66,14 @@ public class PresentationService
 
         JSON:
         {cleanedJson}
-        """);
+        """,
+         "Failed to finalize final presentation result.");
         }
         catch (Exception ex)
         {
             throw new AppException(
-                "PRESENTATION_PARSE_ERROR",
+                "PRES_PARSE_ERROR",
+                "Failed to finalize final presentation result.",
                 $"Unexpected deserialization error: {ex}");
         }
 

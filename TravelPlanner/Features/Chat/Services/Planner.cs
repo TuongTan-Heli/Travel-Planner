@@ -28,6 +28,11 @@ public sealed class Planner
     TravelSession session,
     TravelResponse response)
     {
+        if (session.Context.StartDate is not null && session.Context.EndDate is not null)
+        {
+            session.Context.Days = (session.Context.EndDate.Value - session.Context.StartDate.Value).Days + 1;
+        }
+
         if (session.Stage == TravelStage.LocationSelection)
         {
             await _utils.BroadcastStateAsync(socket, true, "Selecting best location");

@@ -19,15 +19,22 @@ public sealed class TravelPlanningService
 
     public async Task<TripPlanningData> BuildPlanningDataAsync(TravelSession session)
     {
-        if (session.Context.Destination == null || session.Context.Days == null || session.Context.Country == null)
+        if (session.Context.Destination == null || session.Context.Country == null ||
+            (
+                session.Context.Days == null &&
+                (
+                    session.Context.StartDate == null ||
+                    session.Context.EndDate == null
+                )
+            ))
         {
-            throw new AppException("INSUFFICIENT_DATA", "Destination, days and country are required for planning.");
+            throw new AppException("INSUFFICIENT_DATA", "Destination, days and country are required for planning.", "Destination, days and country are required for planning.");
         }
         Task<TravelTime> weatherTask;
 
         var clusters = await _mapService.GetLocations(session);
 
-        if (session.Context.StartDate.HasValue && 
+        if (session.Context.StartDate.HasValue &&
             session.Context.EndDate.HasValue)
         {
             weatherTask = _weatherService.GetWeatherAsync(clusters, session.Context);

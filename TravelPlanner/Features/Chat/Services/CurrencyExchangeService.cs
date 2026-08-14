@@ -41,7 +41,7 @@ public class CurrencyExchangeService
                     toCurrency.ToUpper(),
                     out rate))
             {
-                throw new AppException("CUR_EX_API_ERR", "Exchange rate not found.");
+                throw new AppException("CUR_EX_API_ERR", "Failed to retrieve exchange rate.", "Exchange rate not found.");
             }
 
             _cache.Set(cacheKey, rate);
@@ -60,6 +60,7 @@ public class CurrencyExchangeService
         {
             throw new AppException(
                 "CUR_EX_API_ERR",
+                "Failed to retrieve currencies.",
                 "Unable to retrieve currencies."
             );
         }

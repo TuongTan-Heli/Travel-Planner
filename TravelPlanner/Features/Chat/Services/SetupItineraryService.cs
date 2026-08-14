@@ -69,7 +69,7 @@ public sealed class SetupItineraryService
         }
         catch (Exception ex)
         {
-            throw new AppException("ITI_SETUP", "Error while setup itinerary", ex);
+            throw new AppException("ITI_SETUP","Error while setting up itinerary.", "Error while setting up itinerary", ex);
         }
     }
 

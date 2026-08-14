@@ -38,7 +38,7 @@ public sealed class ScoringService
         }
         catch (Exception ex)
         {
-            throw new AppException("SCRO_ERR", "Error while scoring places", ex);
+            throw new AppException("SCRO_ERR", "Failed to score places.", "Error while scoring places", ex);
         }
 
     }

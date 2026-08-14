@@ -5,7 +5,6 @@ import { ChatMessage } from '../models/websocket';
 interface ChatProps {
   messages: ChatMessage[];
   connected: boolean;
-  error: string | null;
 
   onSend: (text: string) => void;
 }
@@ -13,7 +12,6 @@ interface ChatProps {
 export default function Chat({
   messages,
   connected,
-  error,
   onSend,
 }: ChatProps) {
   const [inputValue, setInputValue] = useState('');
@@ -35,7 +33,6 @@ export default function Chat({
       <div className="bg-white rounded-lg p-4 shadow-sm">
         <div className="text-sm text-gray-500 flex items-center gap-3">
           {connected ? 'Connected' : 'Disconnected'}
-          {error && <span className="text-red-500 ml-2">{error}</span>}
         </div>
         <div className="flex flex-col gap-3  p-2 flex-1">
           {messages.map((message) => {

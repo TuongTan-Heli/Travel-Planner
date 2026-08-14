@@ -98,6 +98,7 @@ public class PromptTemplate
         {
             throw new AppException(
                 "PRMT_BUI_FAIL",
+                "Something went wrong while building the prompt template.",
                 "Failed to build prompt template");
         }
 

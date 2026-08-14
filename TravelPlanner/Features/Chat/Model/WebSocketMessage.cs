@@ -42,6 +42,17 @@ public class ChatMessage : WebSocketMessage
     public bool Thinking { get; set; }
 }
 
+public class ErrorMessage : WebSocketMessage
+{
+    public ErrorMessage()
+    {
+        Kind = "Error";
+    }
+    public string Code { get; set; } = "";
+
+    public string DisplayMessage { get; set; } = "";
+}
+
 
 public enum ChatMessageType
 {

@@ -177,7 +177,7 @@ public class WeatherDayPresentation
 
     public double Rainfall { get; init; }
 
-    public string WeatherCode { get; init; } = "";
+    public double WeatherCode { get; init; }
 
     public double Score { get; init; }
 }

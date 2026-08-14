@@ -1,6 +1,3 @@
-// Custom middleware for request handling
-using System.Text.Json;
-
 public class ErrorMiddleware
 {
     private readonly RequestDelegate _next;
@@ -15,7 +12,8 @@ public class ErrorMiddleware
     }
 
     public async Task InvokeAsync(
-        HttpContext context)
+        HttpContext context,
+        TravelSession session)
     {
         try
         {
@@ -23,44 +21,49 @@ public class ErrorMiddleware
         }
         catch (AppException ex)
         {
-            await HandleExceptionAsync(context, ex);
+            await HandleExceptionAsync(context, session, ex);
         }
     }
 
     private async Task HandleExceptionAsync(
         HttpContext context,
+        TravelSession session,
         AppException exception)
     {
         var correlationId = Guid.NewGuid().ToString();
 
-        // Always log the error, regardless of response state
         _logger.LogError(
             exception,
-            "Error. CorrelationId={CorrelationId}. Path={Path}",
-            correlationId,
+            "Application Error. Code={Code}. Message={Message}. Path={Path}",
+            exception.Code,
+            exception.Message,
             context.Request.Path);
 
-        // Only modify response if it hasn't started yet
+        session.Stage = TravelStage.IntentExtraction;
+        session.Context = new TravelPromptContext();
+
         if (context.Response.HasStarted)
         {
             _logger.LogWarning(
-                "Response has already started. Cannot send error response body for CorrelationId={CorrelationId}",
+                "Response already started. CorrelationId={CorrelationId}",
                 correlationId);
+
             return;
         }
 
+        context.Response.StatusCode =
+            StatusCodes.Status500InternalServerError;
+
         context.Response.ContentType = "application/json";
 
-        var response = new Error
+        var payload = new
         {
-            Code = exception.Code,
-            Message = exception.Message,
-            CorrelationId = correlationId,
-            Path = context.Request.Path,
-            Timestamp = DateTime.UtcNow
+            type = "error",
+            code = exception.Code,
+            message = exception.DisplayMessage,
+            correlationId
         };
 
-        var json = JsonSerializer.Serialize(response);
-        await context.Response.WriteAsync(json);
+        await context.Response.WriteAsJsonAsync(payload);
     }
 }

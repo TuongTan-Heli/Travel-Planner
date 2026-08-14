@@ -36,6 +36,7 @@ builder.Services.AddSingleton<SetupItineraryService>();
 builder.Services.AddSingleton<PresentationService>();
 builder.Services.AddSingleton<Planner>();
 builder.Services.AddSingleton<PlanningBudgetService>();
+builder.Services.AddScoped<TravelSession>();
 
 builder.Services.AddHttpClient<Utils>();
 builder.Services.AddMemoryCache();
