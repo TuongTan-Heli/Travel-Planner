@@ -200,39 +200,46 @@ public sealed class ChatWebSocketService
     {
         if (string.IsNullOrWhiteSpace(messageJson))
             return;
-
-        MessageEnvelope envelope;
-
         try
         {
-            envelope = JsonSerializer.Deserialize<MessageEnvelope>(
-                messageJson,
-                JsonOptions)!;
-        }
-        catch (Exception ex)
-        {
-            throw new AppException(
-                "WS_DESERIALIZE",
-                "Failed to analyze message, please try again.",
-                $"Failed to deserialize message: {ex.Message}");
-        }
+            MessageEnvelope envelope;
 
-        switch (envelope.Type)
-        {
-            case MessageType.Chat:
-                await HandleChatMessage(socket, messageJson);
-                break;
-
-            case MessageType.Planner:
-                await HandlePlannerMessage(socket, messageJson);
-                break;
-
-            default:
+            try
+            {
+                envelope = JsonSerializer.Deserialize<MessageEnvelope>(
+                    messageJson,
+                    JsonOptions)!;
+            }
+            catch (Exception ex)
+            {
                 throw new AppException(
-                    "WS_INVALID_TYPE",
-                    "Invalid message type, please try again.",
-                    "Unknown websocket message type.");
+                    "WS_DESERIALIZE",
+                    "Failed to analyze message, please try again.",
+                    $"Failed to deserialize message: {ex.Message}");
+            }
+
+            switch (envelope.Type)
+            {
+                case MessageType.Chat:
+                    await HandleChatMessage(socket, messageJson);
+                    break;
+
+                case MessageType.Planner:
+                    await HandlePlannerMessage(socket, messageJson);
+                    break;
+
+                default:
+                    throw new AppException(
+                        "WS_INVALID_TYPE",
+                        "Invalid message type, please try again.",
+                        "Unknown websocket message type.");
+            }
         }
+        catch (AppException ex)
+        {
+            await HandleWebSocketErrorAsync(socket, ex);
+        }
+
     }
     private async Task ExecuteIntentExtraction(
     WebSocket socket,
@@ -332,33 +339,25 @@ public sealed class ChatWebSocketService
 
         _logger.LogError(
             exception,
-            "WebSocket Application Error. Code={Code}. Message={Message}",
-            exception.Code,
-            exception.Message);
+            "WebSocket error. Code={Code}",
+            exception.Code);
 
-        // Reset session so the user can start again
-        session.Stage = TravelStage.IntentExtraction;
-        session.Context = new TravelPromptContext();
+        // Reset conversation
+        session.Reset();
 
-        if (socket.State != WebSocketState.Open)
-        {
-            return;
-        }
-
-        try
-        {
-            var errorMessage = new ErrorMessage
+        await _utils.BroadcastAsync(
+            socket,
+            new ErrorMessage
             {
                 Type = WebSocketMessType.Error,
                 Code = exception.Code,
                 DisplayMessage = exception.DisplayMessage
-            };
+            });
 
-            await _utils.BroadcastAsync(socket, errorMessage);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to send WebSocket error message. Code={Code}", exception.Code);
-        }
+        // Tell frontend that the conversation can start again
+        await _utils.BroadcastStateAsync(
+            socket,
+            false,
+            "");
     }
 }

@@ -39,9 +39,6 @@ public class ErrorMiddleware
             exception.Message,
             context.Request.Path);
 
-        session.Stage = TravelStage.IntentExtraction;
-        session.Context = new TravelPromptContext();
-
         if (context.Response.HasStarted)
         {
             _logger.LogWarning(
@@ -51,8 +48,9 @@ public class ErrorMiddleware
             return;
         }
 
-        context.Response.StatusCode =
-            StatusCodes.Status500InternalServerError;
+        session.Reset();
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
         context.Response.ContentType = "application/json";
 

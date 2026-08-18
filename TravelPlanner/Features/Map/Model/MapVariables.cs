@@ -406,4 +406,16 @@ public static class MapVariables
         "bowling_alley",
         "ferris_wheel"
     };
+    public static readonly string[] GlobalChains = [
+        "McDonald's",
+        "Starbucks",
+        "KFC",
+        "Subway",
+        "Burger King",
+        "Pizza Hut",
+        "Domino",
+        "Dunkin'",
+        "Taco Bell",
+        "Wendy"
+        ];
 }

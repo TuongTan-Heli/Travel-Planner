@@ -497,13 +497,10 @@ public class MapService
         double votes = place.UserRatingCount;
 
         // Bayesian weighted rating
-        double weightedRating =
-            votes / (votes + MinimumVotes) * rating +
-            MinimumVotes / (votes + MinimumVotes) * AverageRating;
+        double weightedRating = votes / (votes + MinimumVotes) * rating + MinimumVotes / (votes + MinimumVotes) * AverageRating;
 
         // Logarithmic popularity bonus
-        double popularity =
-            Math.Log10(votes + 1);
+        double popularity =  Math.Log10(votes + 1);
 
         // Final score
         return weightedRating * popularity;

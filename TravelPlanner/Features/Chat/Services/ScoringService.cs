@@ -74,6 +74,12 @@ public sealed class ScoringService
             ScoreRoute(place),
             weights.Route);
 
+        AddScore(
+            result,
+            "Local",
+            ScoreLocal(place),
+            weights.Local);
+
         return result;
         //Adjust weigth, score range
     }
@@ -84,25 +90,24 @@ public sealed class ScoringService
     double value,
     double weight)
     {
+        value = Math.Clamp(value, 0.0, 1.0);
+
         var weighted = value * weight;
 
         score.Breakdown[category] = weighted;
-
         score.TotalScore += weighted;
     }
 
     private double ScoreRating(Place place)
     {
-        double rating = place.Rating / 5.0;
+        double rating = Math.Clamp(place.Rating / 5.0, 0, 1);
 
-        double popularity = Math.Min(place.UserRatingCount, 1000) / 1000.0;
+        double popularity = Math.Clamp(Math.Log10(place.UserRatingCount + 1) / 4.0, 0, 1);
 
-        return rating * 0.7 + popularity * 0.3;
+        return rating * 0.8 + popularity * 0.2;
     }
 
-    private async Task<double> ScoreBudget(
-    Place place,
-    TravelSession session)
+    private async Task<double> ScoreBudget(Place place, TravelSession session)
     {
         if (session.Context.Budget?.Units is null ||
             session.Context.Days is null ||
@@ -111,8 +116,7 @@ public sealed class ScoringService
             return 1.0;
         }
 
-        var targetCurrency =
-        place.PriceRange?.StartPrice?.CurrencyCode
+        var targetCurrency = place.PriceRange?.StartPrice?.CurrencyCode
         ?? session.Context.Budget.CurrencyCode
         ?? "AUD";
 
@@ -124,9 +128,9 @@ public sealed class ScoringService
 
         decimal priceLevel = (decimal)ScorePriceLevel(place, session);
 
-        decimal score = budgetFit * 0.5m + priceLevel * 0.3m;
+        decimal score = budgetFit * 0.7m + priceLevel * 0.3m;
 
-        return (double)score;
+        return Math.Clamp((double)score, 0, 1);
     }
 
     private (decimal Min, decimal Max) GetBudgetPerPlace(
@@ -191,24 +195,26 @@ public sealed class ScoringService
         if (place.PriceRange?.StartPrice?.Units is null ||
             place.PriceRange?.EndPrice?.Units is null)
         {
-            return 0.8m;
+            return 0.6m;
         }
 
         decimal avgPrice = (place.PriceRange.StartPrice.Units + place.PriceRange.EndPrice.Units) / 2m;
 
         if (avgPrice <= minBudget)
-            return 1.2m;
+            return 1.0m;
 
         if (avgPrice <= maxBudget)
-            return 1.0m;
+            return 0.85m;
 
         decimal ratio = avgPrice / maxBudget;
 
         return ratio switch
         {
-            <= 1.2m => 0.8m,
-            <= 1.5m => 0.5m,
-            _ => 0.1m
+            <= 1.10m => 0.70m,
+            <= 1.25m => 0.55m,
+            <= 1.50m => 0.35m,
+            <= 2.00m => 0.15m,
+            _ => 0.0m
         };
     }
 
@@ -222,12 +228,12 @@ public sealed class ScoringService
         {
             return place.PriceLevel switch
             {
-                "PRICE_LEVEL_FREE" => 1.20,
-                "PRICE_LEVEL_INEXPENSIVE" => 1.10,
-                "PRICE_LEVEL_MODERATE" => 0.80,
-                "PRICE_LEVEL_EXPENSIVE" => 0.40,
+                "PRICE_LEVEL_FREE" => 1.00,
+                "PRICE_LEVEL_INEXPENSIVE" => 0.95,
+                "PRICE_LEVEL_MODERATE" => 0.70,
+                "PRICE_LEVEL_EXPENSIVE" => 0.35,
                 "PRICE_LEVEL_VERY_EXPENSIVE" => 0.10,
-                _ => 0.80
+                _ => 0.70
             };
         }
 
@@ -235,12 +241,12 @@ public sealed class ScoringService
         {
             return place.PriceLevel switch
             {
-                "PRICE_LEVEL_FREE" => 0.60,
-                "PRICE_LEVEL_INEXPENSIVE" => 0.70,
-                "PRICE_LEVEL_MODERATE" => 1.00,
-                "PRICE_LEVEL_EXPENSIVE" => 1.10,
-                "PRICE_LEVEL_VERY_EXPENSIVE" => 1.20,
-                _ => 1.00
+                "PRICE_LEVEL_FREE" => 0.50,
+                "PRICE_LEVEL_INEXPENSIVE" => 0.60,
+                "PRICE_LEVEL_MODERATE" => 0.80,
+                "PRICE_LEVEL_EXPENSIVE" => 0.95,
+                "PRICE_LEVEL_VERY_EXPENSIVE" => 1.00,
+                _ => 0.80
             };
         }
         // Balanced traveler
@@ -248,24 +254,39 @@ public sealed class ScoringService
         {
             "PRICE_LEVEL_FREE" => 1.00,
             "PRICE_LEVEL_INEXPENSIVE" => 1.00,
-            "PRICE_LEVEL_MODERATE" => 1.00,
-            "PRICE_LEVEL_EXPENSIVE" => 0.90,
-            "PRICE_LEVEL_VERY_EXPENSIVE" => 0.70,
-            _ => 1.00
+            "PRICE_LEVEL_MODERATE" => 0.90,
+            "PRICE_LEVEL_EXPENSIVE" => 0.70,
+            "PRICE_LEVEL_VERY_EXPENSIVE" => 0.40,
+            _ => 0.80
         };
     }
 
-    private double ScoreInterest(Place place, TravelSession session)
+    private double ScoreInterest(
+    Place place,
+    TravelSession session)
     {
         if (!session.Context.Interests.Any())
-            return 1;
+            return 0.5;
 
-        var matches = session.Context.Interests.Count(i =>
-                MapVariables.InterestTypes[i]
-                    .Intersect(place.Types)
-                    .Any());
+        double score = 0;
 
-        return matches / (double)session.Context.Interests.Count;
+        foreach (var interest in session.Context.Interests)
+        {
+            if (!MapVariables.InterestTypes.TryGetValue(
+                    interest,
+                    out var types))
+                continue;
+
+            if (types.Intersect(place.Types).Any())
+            {
+                score += 1.0;
+            }
+        }
+
+        return Math.Clamp(
+            score / session.Context.Interests.Count,
+            0,
+            1);
     }
 
     private double ScoreRoute(
@@ -282,10 +303,37 @@ public sealed class ScoringService
                                 place.PlaceCluster?.Center.Latitude ?? 0,
                                 place.PlaceCluster?.Center.Longitude ?? 0);
 
-        return Math.Max(0, 1.0 - distance / 5000.0);
+        return Math.Exp(-distance / 2000.0);
     }
+    private double ScoreLocal(Place place)
+    {
+        if (place.Category != PlaceCategory.Restaurant)
+        {
+            return 0.7;
+        }
 
+        var name = place.Name.ToLowerInvariant();
 
+        if (MapVariables.GlobalChains.Any(brand => name.Contains(brand)))
+            return 0.15;
+
+        var reviews = place.UserRatingCount;
+        double score = reviews switch
+        {
+            < 20 => 0.35,
+            < 50 => 0.55,
+            < 100 => 0.75,
+            < 250 => 0.95,
+            < 500 => 1.00,
+            < 1000 => 0.90,
+            < 2000 => 0.75,
+            _ => 0.60
+        };
+        if (place.Types.Any())
+            score += 0.05;
+
+        return Math.Clamp(score, 0.1, 1.0);
+    }
     private ScoreWeights BuildWeights(TravelSession session)
     {
         var w = new ScoreWeights();

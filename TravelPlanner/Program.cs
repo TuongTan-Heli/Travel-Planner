@@ -23,7 +23,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
-builder.Services.AddHttpClient<ChatService>();
+builder.Services.AddHttpClient<ChatService>(client => client.Timeout = TimeSpan.FromSeconds(200));
 builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddHttpClient<MapService>();
 builder.Services.AddSingleton<ScoringService>();

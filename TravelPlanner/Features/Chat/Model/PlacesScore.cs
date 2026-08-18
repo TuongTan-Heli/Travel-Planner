@@ -7,13 +7,10 @@ public class PlaceScore
 
 public class ScoreWeights
 {
-    public double Rating = 30;
-
-    public double Budget = 15;
-
-    public double Interest = 70;
-
-    public double Route = 30;
-
-    public double Crowd = 10;
+    public double Rating = 25;
+    public double Budget = 20;
+    public double Interest = 50;
+    public double Route = 25;
+    public double Local = 40;
+    public double MaxScore => Rating + Budget + Interest + Route + Local;
 }

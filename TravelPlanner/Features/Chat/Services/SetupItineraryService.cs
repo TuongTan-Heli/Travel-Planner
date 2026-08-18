@@ -69,7 +69,7 @@ public sealed class SetupItineraryService
         }
         catch (Exception ex)
         {
-            throw new AppException("ITI_SETUP","Error while setting up itinerary.", "Error while setting up itinerary", ex);
+            throw new AppException("ITI_SETUP", "Error while setting up itinerary.", "Error while setting up itinerary", ex);
         }
     }
 
@@ -433,7 +433,7 @@ public sealed class SetupItineraryService
     private Place? FindNearestRestaurant(Place center, List<Place> remaining, Func<Place, bool> filter)
     {
         return remaining
-            .Where(x => x.Category == PlaceCategory.Restaurant)
+            .Where(x => x.Category == PlaceCategory.Restaurant && !MapVariables.GlobalChains.Any(brand => x.Name.Contains(brand, StringComparison.OrdinalIgnoreCase)))
             .Where(filter)
             .OrderBy(x => DistanceKm(center, x))
             .ThenByDescending(x => x.Score.TotalScore)
