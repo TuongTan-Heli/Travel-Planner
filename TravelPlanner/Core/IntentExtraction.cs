@@ -38,6 +38,7 @@ public sealed class IntentExtractionService
                 "INTENT_PARSE_ERROR",
                 "Failed to parse intent extraction result.",
                 "Failed to parse intent extraction result.");
+                
         MergeContext(session.Context, result);
 
         var ready = session.Context.IsReadyForPlanning();

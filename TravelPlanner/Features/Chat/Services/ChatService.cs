@@ -53,7 +53,8 @@ public class ChatService
             generationConfig = new
             {
                 temperature = 0.2,
-                candidateCount = 1
+                candidateCount = 1,
+                responseMimeType = "application/json"
             }
         };
 
