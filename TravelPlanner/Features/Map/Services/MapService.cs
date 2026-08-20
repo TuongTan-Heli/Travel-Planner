@@ -1,7 +1,7 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
-using TravelPlanner.Features.Chat.Services;
 using TravelPlanner.Features.Map.Model;
 
 namespace TravelPlanner.Features.Map;
@@ -16,6 +16,8 @@ public class MapService
     private readonly string _searchNearbyUrl;
     private readonly string _searchTextUrl;
     private const int maxAttemptCall = 5;
+    private readonly ILogger<ErrorMiddleware> _logger;
+
 
     private static readonly Dictionary<PlaceCategory, int> ClusterMinimum = new()
     {
@@ -25,12 +27,13 @@ public class MapService
     };
 
 
-    public MapService(HttpClient httpClient, Utils utils, PlanningBudgetService planningBudgetService, CurrencyExchangeService currencyExchangeService)
+    public MapService(HttpClient httpClient, Utils utils, PlanningBudgetService planningBudgetService, CurrencyExchangeService currencyExchangeService, ILogger<ErrorMiddleware> logger)
     {
         _httpClient = httpClient;
         _utils = utils;
         _planningBudgetService = planningBudgetService;
         _currencyExchangeService = currencyExchangeService;
+        _logger = logger;
         _searchNearbyUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_NEARBY_API_URL") ?? string.Empty;
         _searchTextUrl = Environment.GetEnvironmentVariable("GOOGLE_MAP_SEARCH_TEXT_API_URL") ?? string.Empty;
         _path = Environment.GetEnvironmentVariable("GOOGLE_ACCESS_PATH") ?? string.Empty;
@@ -229,65 +232,105 @@ public class MapService
     List<string>? types = null,
     double? minRating = 3)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, _searchNearbyUrl);
+        const int maxAttempts = 5;
 
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        request.Headers.Add("X-Goog-FieldMask", MapVariables.GoogleMapFieldMask);
-
-        var body = new
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            includedPrimaryTypes = primaryTypes,
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                _searchNearbyUrl);
 
-            includedTypes = types,
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
 
-            locationRestriction = new
+            request.Headers.Add(
+                "X-Goog-FieldMask",
+                MapVariables.GoogleMapFieldMask);
+
+            var body = new
             {
-                circle = new
+                includedPrimaryTypes = primaryTypes,
+                includedTypes = types,
+                locationRestriction = new
                 {
-                    center = new
+                    circle = new
                     {
-                        latitude = lat,
-                        longitude = lon
-                    },
-                    radius = rad
+                        center = new
+                        {
+                            latitude = lat,
+                            longitude = lon
+                        },
+                        radius = rad
+                    }
                 }
-            }
-        };
+            };
 
-        request.Content = JsonContent.Create(body);
+            request.Content = JsonContent.Create(body);
 
-        var response = await _httpClient.SendAsync(request);
+            using var response = await _httpClient.SendAsync(request);
 
-        var raw = await response.Content.ReadAsStringAsync();
+            var raw = await response.Content.ReadAsStringAsync();
 
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new AppException(
-                "MAP_API_ERROR",
-                "Something went wrong while retrieving data from Google Places API, please try again later.",
-                $"Google Places failed {(int)response.StatusCode}: {raw}");
-        }
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonSerializer.Deserialize<GooglePlacesResponse>(
+                        raw,
+                        new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
 
-        var result = JsonSerializer.Deserialize<GooglePlacesResponse>(
-                raw,
-                new JsonSerializerOptions
+                var places = result?.Places == null
+                    ? []
+                    : MapResponse(result.Places, cluster);
+
+                if (minRating.HasValue)
                 {
-                    PropertyNameCaseInsensitive = true
-                });
+                    places = places
+                        .Where(p => p.Rating >= minRating.Value)
+                        .ToList();
+                }
 
-        var places = result?.Places == null ? [] : MapResponse(result.Places, cluster);
+                places = await FilterByBudgetAsync(places, session.Context);
 
-        if (minRating.HasValue)
-        {
-            places = places
-                .Where(p => p.Rating >= minRating.Value)
-                .ToList();
+                return places;
+            }
+
+            bool shouldRetry =
+                response.StatusCode == HttpStatusCode.TooManyRequests ||
+                response.StatusCode == HttpStatusCode.InternalServerError ||
+                response.StatusCode == HttpStatusCode.BadGateway ||
+                response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                response.StatusCode == HttpStatusCode.GatewayTimeout;
+
+            if (!shouldRetry || attempt == maxAttempts)
+            {
+                throw new AppException(
+                    "MAP_API_ERROR",
+                    "Something went wrong while retrieving data from Google Places API, please try again later.",
+                    $"Google Places failed {(int)response.StatusCode}: {raw}");
+            }
+
+            var delay = TimeSpan.FromSeconds(
+                Math.Pow(2, attempt - 1));
+
+            _logger.LogWarning(
+                "Google Places API failed. " +
+                "Attempt {Attempt}/{MaxAttempts}. " +
+                "StatusCode={StatusCode}. " +
+                "Retrying in {Delay}s.",
+                attempt,
+                maxAttempts,
+                (int)response.StatusCode,
+                delay.TotalSeconds);
+
+            await Task.Delay(delay);
         }
 
-        places = await FilterByBudgetAsync(places, session.Context);
-
-        return places;
+        throw new AppException(
+            "MAP_API_ERROR",
+            "Something went wrong while retrieving data from Google Places API, please try again later.",
+            "Google Places request failed after maximum retry attempts.");
     }
 
     private async Task<List<Place>> FilterByBudgetAsync(
@@ -500,7 +543,7 @@ public class MapService
         double weightedRating = votes / (votes + MinimumVotes) * rating + MinimumVotes / (votes + MinimumVotes) * AverageRating;
 
         // Logarithmic popularity bonus
-        double popularity =  Math.Log10(votes + 1);
+        double popularity = Math.Log10(votes + 1);
 
         // Final score
         return weightedRating * popularity;

@@ -90,6 +90,7 @@ public class PromptTemplate
             - Use the entire conversation context.
             - Do not ask for information already provided.
             - Ask at most ONE question.
+            - Never ask user the same question twice.
             - If required information is missing, ask for the highest-priority missing field in this order:
             destination → country → dates/days → budget.
             - If all required information exists, provide a short confirmation in assistantMessage.
