@@ -1,3 +1,0 @@
-//getWeather
-//getGoodTravelTimes
-//getPreferredWeatherConditions

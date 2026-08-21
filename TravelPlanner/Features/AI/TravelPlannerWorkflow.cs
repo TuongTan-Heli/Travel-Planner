@@ -9,23 +9,4 @@ public class TravelPlannerWorkflow
     {
         _chatService = chatService;
     }
-
-    // public async Task<TravelWorkflowResult> ProcessAsync(
-    //     TravelSession session,
-    //     string userMessage)
-    // // {
-    //     switch (session.Stage)
-    //     {
-    //         case TravelStage.IntentExtraction:
-    //             return await HandleIntentExtraction(
-    //                 session,
-    //                 userMessage);
-
-    //         default:
-    //             return new TravelWorkflowResult
-    //             {
-    //                 Message = "Unsupported stage."
-    //             };
-    //     }
-    // }
 }

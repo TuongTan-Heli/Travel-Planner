@@ -1,4 +1,5 @@
 using System.Text.Json;
+using TravelPlanner.Features.AI.Models;
 using TravelPlanner.Features.Map.Model;
 public class PromptTemplate
 {
