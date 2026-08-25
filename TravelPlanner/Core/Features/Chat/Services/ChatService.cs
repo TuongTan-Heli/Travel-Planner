@@ -207,19 +207,19 @@ public class ChatService
             history.Add(prompt);
         }
 
-        var previousMessages = history
-            .TakeLast(Math.Min(history.Count, 8))
-            .Take(Math.Max(0, history.Count - 1))
-            .ToList();
+        // var previousMessages = history
+        //     .TakeLast(Math.Min(history.Count, 8))
+        //     .Take(Math.Max(0, history.Count - 1))
+        //     .ToList();
 
-        if (previousMessages.Count == 0)
-        {
-            return prompt;
-        }
+        // if (previousMessages.Count == 0)
+        // {
+        //     return prompt;
+        // }
 
         var builder = new StringBuilder();
-        builder.AppendLine("Conversation history (user only):");
-        foreach (var previousMessage in previousMessages)
+        builder.AppendLine("Conversation history:");
+        foreach (var previousMessage in session.ChatHistory)
         {
             builder.AppendLine($"- {previousMessage}");
         }

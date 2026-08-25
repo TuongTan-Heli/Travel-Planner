@@ -1,7 +1,5 @@
 using System.Net.WebSockets;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace TravelPlanner.Features.Chat.Services;
 
@@ -12,15 +10,17 @@ public sealed class Planner
     private readonly ScoringService _scoringService;
     private readonly SetupItineraryService _setupItineraryService;
     private readonly PresentationService _presentationService;
+    private readonly TravelHistoryService _travelHistoryService;
 
     public Planner(Utils utils, LocationService locationService, ScoringService scoringService,
-     SetupItineraryService setupItineraryService, PresentationService presentationService)
+     SetupItineraryService setupItineraryService, PresentationService presentationService, TravelHistoryService travelHistoryService)
     {
         _utils = utils;
         _locationService = locationService;
         _scoringService = scoringService;
         _setupItineraryService = setupItineraryService;
         _presentationService = presentationService;
+        _travelHistoryService = travelHistoryService;
     }
 
     public async Task ContinuePlanningAsync(
@@ -78,6 +78,7 @@ public sealed class Planner
 
             await _utils.BroadcastAsync(socket, reply);
             await _utils.BroadcastStateAsync(socket, false, "");
+            await _travelHistoryService.SaveSuccessAsync(session);
 
             session.Stage = TravelStage.IntentExtraction;
         }

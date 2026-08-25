@@ -56,8 +56,8 @@ public class PromptTemplate
 
             3. Destination / country
             - Infer country when the destination clearly identifies it.
-            - If only a country is provided, ask for a destination unless the user clearly intends the country itself as the destination.
-            - Never invent a destination.
+            - If only a country is provided, ask for a destination.
+            - If asked for a specific destination but user don't provide or say any destination, then destination = country
 
             4. Dates
             - Format dates as DD-MM-YYYY.
@@ -87,10 +87,10 @@ public class PromptTemplate
             {{string.Join(", ", Enum.GetNames(typeof(TravelFrequency)))}}
 
             7. Conversation
+            - Based on conversation history, never ask user the same question twice. (important)
             - Use the entire conversation context.
             - Do not ask for information already provided.
             - Ask at most ONE question.
-            - Never ask user the same question twice.
             - If required information is missing, ask for the highest-priority missing field in this order:
             destination → country → dates/days → budget.
             - If all required information exists, provide a short confirmation in assistantMessage.

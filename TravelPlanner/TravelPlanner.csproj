@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>TravelPlanner</RootNamespace>
+    <UserSecretsId>b0dec626-bff2-4baa-89e5-ee6c84a0d1c9</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <None Update="app\**\*">
@@ -13,5 +14,6 @@
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="2.4.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.75.0" />
+    <PackageReference Include="MongoDB.Driver" Version="3.11.0" />
   </ItemGroup>
 </Project>

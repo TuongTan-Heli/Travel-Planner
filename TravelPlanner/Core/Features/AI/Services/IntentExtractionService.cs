@@ -38,8 +38,11 @@ public sealed class IntentExtractionService
                 "INTENT_PARSE_ERROR",
                 "Failed to parse intent extraction result.",
                 "Failed to parse intent extraction result.");
-                
+
         MergeContext(session.Context, result);
+
+        session.ChatHistory.Add(userMessage);
+        session.ChatHistory.Add(result.AssistantMessage);
 
         var ready = session.Context.IsReadyForPlanning();
 
@@ -96,7 +99,7 @@ public sealed class IntentExtractionService
                 .Union(result.Preferences)
                 .ToList();
         }
-        
+
         if (result.MinRating.HasValue)
         {
             ctx.MinRating = result.MinRating;

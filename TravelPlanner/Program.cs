@@ -23,6 +23,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDb"));
 builder.Services.AddHttpClient<ChatService>(client => client.Timeout = TimeSpan.FromSeconds(300));
 builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddHttpClient<MapService>();
@@ -36,6 +37,8 @@ builder.Services.AddSingleton<SetupItineraryService>();
 builder.Services.AddSingleton<PresentationService>();
 builder.Services.AddSingleton<Planner>();
 builder.Services.AddScoped<TravelSession>();
+builder.Services.AddSingleton<TravelHistoryRepository>();
+builder.Services.AddSingleton<TravelHistoryService>();
 
 builder.Services.AddHttpClient<Utils>();
 builder.Services.AddMemoryCache();

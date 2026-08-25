@@ -2,13 +2,16 @@ public class ErrorMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ErrorMiddleware> _logger;
+    private readonly TravelHistoryService _travelHistoryService;
 
     public ErrorMiddleware(
         RequestDelegate next,
-        ILogger<ErrorMiddleware> logger)
+        ILogger<ErrorMiddleware> logger,
+        TravelHistoryService travelHistoryService)
     {
         _next = next;
         _logger = logger;
+        _travelHistoryService = travelHistoryService;
     }
 
     public async Task InvokeAsync(
@@ -32,6 +35,8 @@ public class ErrorMiddleware
     {
         var correlationId = Guid.NewGuid().ToString();
 
+        await _travelHistoryService.SaveFailureAsync(session, exception.Code, exception.Message + "  " + context.Request.Path);
+        
         _logger.LogError(
             exception,
             "Application Error. Code={Code}. Message={Message}. Path={Path}",

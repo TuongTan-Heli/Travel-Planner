@@ -5,6 +5,8 @@ public class TravelSession
     public TravelStage Stage { get; set; } = TravelStage.IntentExtraction;
 
     public TravelPromptContext Context { get; set; } = new();
+    
+    public List<string> ChatHistory { get; set; } = new List<string>();
 
     public void Reset()
     {
