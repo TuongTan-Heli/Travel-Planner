@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import itineraryReducer from './itinerarySlice';
-import systemReducer from './systemSlice';
+import itineraryReducer from './ItinerarySlice';
+import systemReducer from './SystemSlice';
 
 export const store = configureStore({
   reducer: {

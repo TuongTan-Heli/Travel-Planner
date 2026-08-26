@@ -1,6 +1,6 @@
-import type { Itinerary, SelectedStop } from '../models/itinerary';
-import { useAppSelector } from '../store/hooks';
-import DayMap from './dayMap';
+import type { Itinerary, SelectedStop } from '../models/Itinerary';
+import { useAppSelector } from '../store/Hooks';
+import DayMap from './DayMap';
 
 interface InteractiveMapProps {
   selectedStop: SelectedStop | null;
