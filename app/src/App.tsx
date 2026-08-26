@@ -1,4 +1,4 @@
-import Footer from './components/shared/footer';
+import Footer from './components/shared/Footer';
 import TripPlanner from './components/TripPlanner';
 
 function App() {
