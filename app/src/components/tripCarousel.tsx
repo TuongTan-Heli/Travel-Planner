@@ -1,7 +1,7 @@
 import { useEffect, useState, type PointerEvent } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setActiveDayIndex } from '../store/itinerarySlice';
-import type { Activity, Itinerary } from '../models/itinerary';
+import { useAppDispatch, useAppSelector } from '../store/Hooks';
+import { setActiveDayIndex } from '../store/ItinerarySlice';
+import type { Activity, Itinerary } from '../models/Itinerary';
 
 interface TripCarouselProps {
   data?: Itinerary | null;

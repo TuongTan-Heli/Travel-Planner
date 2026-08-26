@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Itinerary } from '../models/itinerary';
+import type { Itinerary } from '../models/Itinerary';
 
 export interface ItineraryState {
   presentationData: Itinerary | null;

@@ -1,6 +1,6 @@
 import { APIProvider } from '@vis.gl/react-google-maps';
-import type { Day, SelectedStop } from '../models/itinerary';
-import DayMapContent from '../components/dayMapContent';
+import type { Day, SelectedStop } from '../models/Itinerary';
+import DayMapContent from './DayMapContent';
 import { useState } from 'react';
 
 const apiKey = process.env.MAP_JS_API_KEY || '';

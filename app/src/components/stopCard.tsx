@@ -1,4 +1,4 @@
-import type { SelectedStop } from '../models/itinerary';
+import type { SelectedStop } from '../models/Itinerary';
 
 interface StopCardProps {
   selectedStop: SelectedStop;

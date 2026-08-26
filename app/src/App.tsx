@@ -1,5 +1,5 @@
 import Footer from './components/shared/footer';
-import TripPlanner from './components/tripPlanner';
+import TripPlanner from './components/TripPlanner';
 
 function App() {
   return (

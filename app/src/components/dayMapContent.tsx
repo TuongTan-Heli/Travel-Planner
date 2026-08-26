@@ -1,10 +1,10 @@
 import { Map, AdvancedMarker, InfoWindow, Pin, useMap, useMapsLibrary, } from '@vis.gl/react-google-maps';
 import { useEffect, useState } from 'react';
-import type { Activity, Day, Place, SelectedStop, } from '../models/itinerary';
-import { useAppSelector } from '../store/hooks';
-import * as utils from '../utils'
+import type { Activity, Day, Place, SelectedStop, } from '../models/Itinerary';
+import { useAppSelector } from '../store/Hooks';
+import * as utils from '../Utils'
 
-import StopInfo from './stopInfo';
+import StopInfo from './StopInfo';
 
 interface DayMapContentProps {
     day: Day;

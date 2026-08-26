@@ -1,15 +1,15 @@
-import Chat from './chat';
-import InteractiveMap from './interactiveMap';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import TripCarousel from './tripCarousel';
-import type { Itinerary, SelectedStop } from '../models/itinerary';
-import StopCard from './stopCard';
+import Chat from './Chat';
+import InteractiveMap from './InteractiveMap';
+import { useAppDispatch, useAppSelector } from '../store/Hooks';
+import TripCarousel from './TripCarousel';
+import type { Itinerary, SelectedStop } from '../models/Itinerary';
+import StopCard from './StopCard';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Planner from './planner';
-import { OutgoingMessage, WebSocketMessage } from '../models/websocket';
-import { setPresentationData } from '../store/itinerarySlice';
-import { setSystemState } from '../store/systemSlice';
-import { PlannerRequest } from './planner';
+import Planner from './Planner';
+import { OutgoingMessage, WebSocketMessage } from '../models/Websocket';
+import { setPresentationData } from '../store/ItinerarySlice';
+import { setSystemState } from '../store/SystemSlice';
+import { PlannerRequest } from './Planner';
 
 // Simple UUID generator
 const Guid = {

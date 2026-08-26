@@ -1,5 +1,5 @@
-import { Place, SelectedStop } from "../models/itinerary";
-import { openGoogleMaps } from "../utils";
+import { Place, SelectedStop } from "../models/Itinerary";
+import { openGoogleMaps } from "../Utils";
 
 interface StopInfoProps {
     selectedStop: SelectedStop;

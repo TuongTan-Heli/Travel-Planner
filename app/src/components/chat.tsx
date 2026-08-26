@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import TypeWriter from './shared/typeWriter';
-import { ChatMessage } from '../models/websocket';
+import { ChatMessage } from '../models/Websocket';
 
 interface ChatProps {
   messages: ChatMessage[];
