@@ -3,7 +3,7 @@ import type { Day, SelectedStop } from '../models/itinerary';
 import DayMapContent from '../components/dayMapContent';
 import { useState } from 'react';
 
-const apiKey = process.env.REACT_APP_MAP_JS_API_KEY || '';
+const apiKey = process.env.MAP_JS_API_KEY || '';
 
 interface DayMapProps {
   day: Day;
