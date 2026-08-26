@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import '../styles/planner.css';
+import '../styles/Planner.css';
 import Select from "react-select";
 
 export interface PlannerRequest {
