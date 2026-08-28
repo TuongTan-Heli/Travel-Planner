@@ -10,8 +10,6 @@ var builder = WebApplication.CreateBuilder(args);
 var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
 if (File.Exists(envPath)) Env.Load(envPath);
 
-builder.WebHost.UseUrls("http://localhost:5223");
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost", policy =>
