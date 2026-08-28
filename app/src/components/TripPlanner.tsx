@@ -102,7 +102,7 @@ export default function TripPlanner() {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const websocketUrl = `${protocol}://localhost:5223/ws/chat`;
+    const websocketUrl = `${protocol}://${process.env.WEBSOCKET_URL}/ws/chat`;
     const socket = new WebSocket(websocketUrl);
 
     socket.onopen = () => {
