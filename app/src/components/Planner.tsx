@@ -73,7 +73,7 @@ export default function Planner({ onSubmit }: PlannerProps) {
 
   async function loadCurrencies() {
     try {
-      await fetch("/api/currency/currencies")
+      await fetch(`${process.env.REACT_APP_URL}/api/currency/currencies`)
         .then(r => r.json())
         .then(setCurrencies);
 
