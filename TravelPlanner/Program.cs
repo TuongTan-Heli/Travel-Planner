@@ -24,7 +24,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
-        policy.WithOrigins("https://travelplannerbe1.xyz")
+        policy.WithOrigins("https://travel-planner-olive-pi.vercel.app/")
         .AllowAnyHeader()
         .AllowAnyMethod()
         .AllowCredentials();
