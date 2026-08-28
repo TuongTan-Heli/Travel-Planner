@@ -105,7 +105,7 @@ export default function TripPlanner() {
     const websocketUrl = `${protocol}://${process.env.REACT_APP_API_URL}/ws/chat`;
 
     console.log(websocketUrl);
-    const socket = new WebSocket(websocketUrl);
+    const socket = new WebSocket(websocketUrl); 
 
     socket.onopen = () => {
       setConnected(true);
