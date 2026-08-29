@@ -19,10 +19,10 @@ public class ChatService
     {
         _http = http;
         _apiKey = Environment.GetEnvironmentVariable("GEN_API_KEY") ?? configuration["Generative:ApiKey"] ?? string.Empty;
-        _api25FlashUrl = Environment.GetEnvironmentVariable("GEN_API_2.5_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
-        _api25FlashLiteUrl = Environment.GetEnvironmentVariable("GEN_API_2.5_FLASH_LITE_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
-        _api35FlashUrl = Environment.GetEnvironmentVariable("GEN_API_3.5_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
-        _api36FlashUrl = Environment.GetEnvironmentVariable("GEN_API_3.6_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api25FlashUrl = Environment.GetEnvironmentVariable("GEN_API_2_5_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api25FlashLiteUrl = Environment.GetEnvironmentVariable("GEN_API_2_5_FLASH_LITE_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api35FlashUrl = Environment.GetEnvironmentVariable("GEN_API_3_5_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
+        _api36FlashUrl = Environment.GetEnvironmentVariable("GEN_API_3_6_FLASH_URL") ?? configuration["Generative:ApiUrl"] ?? string.Empty;
     }
 
     public async Task<string> GenerateReplyAsync(string prompt, TravelSession? session = null)

@@ -48,7 +48,6 @@ export default function TripPlanner() {
       if (message.kind !== "Chat") {
         return;
       }
-      console.log("CHAT MESSAGE RECEIVED:", message);
 
       if (message.id === "Presentation") {
 
@@ -102,8 +101,9 @@ export default function TripPlanner() {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const websocketUrl = `${protocol}://localhost:5223/ws/chat`;
-    const socket = new WebSocket(websocketUrl);
+    const websocketUrl = `${protocol}://${process.env.REACT_APP_API_URL}/ws/chat`;
+
+    const socket = new WebSocket(websocketUrl); 
 
     socket.onopen = () => {
       setConnected(true);
