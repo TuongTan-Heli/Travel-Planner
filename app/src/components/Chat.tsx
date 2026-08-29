@@ -64,9 +64,9 @@ export default function Chat({
         </div>
         <form className="mt-4 flex gap-3 items-center" onSubmit={handleSubmit}>
           <input
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full flex-1 overflow-x-auto border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
             type="text"
-            placeholder="Type your message..."
+            placeholder="Tell us information about your trip"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
           />

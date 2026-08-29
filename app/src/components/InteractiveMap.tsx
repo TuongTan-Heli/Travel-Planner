@@ -18,7 +18,7 @@ export default function InteractiveMap({ selectedStop, onStopSelect }: Interacti
         <div className="w-full h-full">
           {activeDay && (<DayMap day={activeDay} selectedStop={selectedStop} onStopSelect={onStopSelect} />)}
           {!activeDay && (
-            <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center h-full p-4">
               <p className="text-lg font-semibold text-slate-700">Your interactive map will be shown here</p>
             </div>
           )}
