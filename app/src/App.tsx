@@ -1,14 +1,12 @@
 import Footer from './components/shared/Footer';
+import Hero from './components/shared/Hero';
 import TripPlanner from './components/TripPlanner';
 
 function App() {
   return (
     <div className="app-shell">
       <header className="app-header hero-deck">
-        <div className="hero-content">
-          <h1>Travel Planner</h1>
-          <p>Small SPA dashboard with backend-powered weather and itinerary features.</p>
-        </div>
+        <Hero />
       </header>
 
       <main className="app-main">
