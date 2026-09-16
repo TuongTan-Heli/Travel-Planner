@@ -16,7 +16,7 @@ public sealed class ChatWebSocketService
     private readonly Utils _utils;
     private readonly Planner _planner;
     private readonly ILogger<ChatWebSocketService> _logger;
-
+    private readonly ErrorHandlerService _errorHandlerService;
     private static readonly JsonSerializerOptions JsonOptions =
     new()
     {
@@ -27,8 +27,9 @@ public sealed class ChatWebSocketService
             new JsonStringEnumConverter()
         }
     };
-    public ChatWebSocketService(IntentExtractionService intentExtractionService, ChatService chatService, Utils utils, Planner planner, ILogger<ChatWebSocketService> logger)
+    public ChatWebSocketService(IntentExtractionService intentExtractionService, ChatService chatService, Utils utils, Planner planner, ILogger<ChatWebSocketService> logger, ErrorHandlerService errorHandlerService)
     {
+        _errorHandlerService = errorHandlerService;
         _intentExtractionService = intentExtractionService;
         _chatService = chatService;
         _utils = utils;
@@ -161,7 +162,7 @@ public sealed class ChatWebSocketService
         }
         catch (AppException ex)
         {
-            await HandleWebSocketErrorAsync(socket, ex);
+            await _errorHandlerService.HandleWebSocketErrorAsync(socket, GetSession(socket), ex);
         }
         catch (WebSocketException ex)
         {
@@ -174,8 +175,9 @@ public sealed class ChatWebSocketService
         }
         catch (Exception ex)
         {
-            await HandleWebSocketErrorAsync(
+            await _errorHandlerService.HandleWebSocketErrorAsync(
                 socket,
+                GetSession(socket),
                 new AppException(
                     "WS_INTERNAL",
                     "Something went wrong. Please try again.",
@@ -202,6 +204,8 @@ public sealed class ChatWebSocketService
             return;
         try
         {
+            throw new AppException("TEST", "DISPLAY MESSAGE", "THIS IS TRUE MESSAGE");
+
             MessageRequest messageRequest;
 
             try
@@ -237,7 +241,7 @@ public sealed class ChatWebSocketService
         }
         catch (AppException ex)
         {
-            await HandleWebSocketErrorAsync(socket, ex);
+            await _errorHandlerService.HandleWebSocketErrorAsync(socket, GetSession(socket), ex);
         }
 
     }
@@ -329,35 +333,5 @@ public sealed class ChatWebSocketService
             index = (index + 1) % dots.Length;
             await Task.Delay(600);
         }
-    }
-
-    private async Task HandleWebSocketErrorAsync(
-    WebSocket socket,
-    AppException exception)
-    {
-        var session = GetSession(socket);
-
-        _logger.LogError(
-            exception,
-            "WebSocket error. Code={Code}",
-            exception.Code);
-
-        // Reset conversation
-        session.Reset();
-
-        await _utils.BroadcastAsync(
-            socket,
-            new ErrorMessage
-            {
-                Type = WebSocketMessType.Error,
-                Code = exception.Code,
-                DisplayMessage = exception.DisplayMessage
-            });
-
-        // Tell frontend that the conversation can start again
-        await _utils.BroadcastStateAsync(
-            socket,
-            false,
-            "");
     }
 }

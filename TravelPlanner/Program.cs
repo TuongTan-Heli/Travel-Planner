@@ -48,6 +48,7 @@ builder.Services.AddSingleton<Planner>();
 builder.Services.AddScoped<TravelSession>();
 builder.Services.AddSingleton<TravelHistoryRepository>();
 builder.Services.AddSingleton<TravelHistoryService>();
+builder.Services.AddSingleton<ErrorHandlerService>();
 
 builder.Services.AddHttpClient<Utils>();
 builder.Services.AddMemoryCache();

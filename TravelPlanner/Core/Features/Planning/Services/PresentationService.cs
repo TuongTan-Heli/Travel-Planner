@@ -56,6 +56,7 @@ public class PresentationService
         {
             throw new AppException(
         "PRES_PARSE_ERROR",
+        "Failed to finalize final presentation result.",
         $"""
         Failed to deserialize FinalPresentation.
 
@@ -66,8 +67,8 @@ public class PresentationService
 
         JSON:
         {cleanedJson}
-        """,
-         "Failed to finalize final presentation result.");
+        """);
+
         }
         catch (Exception ex)
         {

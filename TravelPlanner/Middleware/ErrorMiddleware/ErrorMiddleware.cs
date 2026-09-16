@@ -1,17 +1,20 @@
+using System.Net.WebSockets;
+using System.Text.Json;
+
 public class ErrorMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ErrorMiddleware> _logger;
-    private readonly TravelHistoryService _travelHistoryService;
+    private readonly ErrorHandlerService _errorHandlerService;
 
     public ErrorMiddleware(
         RequestDelegate next,
         ILogger<ErrorMiddleware> logger,
-        TravelHistoryService travelHistoryService)
+        ErrorHandlerService errorHandlerService)
     {
         _next = next;
         _logger = logger;
-        _travelHistoryService = travelHistoryService;
+        _errorHandlerService = errorHandlerService;
     }
 
     public async Task InvokeAsync(
@@ -24,49 +27,19 @@ public class ErrorMiddleware
         }
         catch (AppException ex)
         {
-            await HandleExceptionAsync(context, session, ex);
+            var payload = await _errorHandlerService.HandleErrorAsync(session, ex, context.Request.Path);
+
+            if (context.Response.HasStarted)
+            {
+                _logger.LogWarning("Response already started. CorrelationId={CorrelationId}", payload.CorrelationId);
+                return;
+            }
+
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
+            context.Response.ContentType = "application/json";
+
+            await context.Response.WriteAsJsonAsync(payload);
         }
-    }
-
-    private async Task HandleExceptionAsync(
-        HttpContext context,
-        TravelSession session,
-        AppException exception)
-    {
-        var correlationId = Guid.NewGuid().ToString();
-
-        await _travelHistoryService.SaveFailureAsync(session, exception.Code, exception.Message + "  " + context.Request.Path);
-        
-        _logger.LogError(
-            exception,
-            "Application Error. Code={Code}. Message={Message}. Path={Path}",
-            exception.Code,
-            exception.Message,
-            context.Request.Path);
-
-        if (context.Response.HasStarted)
-        {
-            _logger.LogWarning(
-                "Response already started. CorrelationId={CorrelationId}",
-                correlationId);
-
-            return;
-        }
-
-        session.Reset();
-
-        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-
-        context.Response.ContentType = "application/json";
-
-        var payload = new
-        {
-            type = "error",
-            code = exception.Code,
-            message = exception.DisplayMessage,
-            correlationId
-        };
-
-        await context.Response.WriteAsJsonAsync(payload);
     }
 }
