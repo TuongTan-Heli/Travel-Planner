@@ -204,8 +204,6 @@ public sealed class ChatWebSocketService
             return;
         try
         {
-            throw new AppException("TEST", "DISPLAY MESSAGE", "THIS IS TRUE MESSAGE");
-
             MessageRequest messageRequest;
 
             try
